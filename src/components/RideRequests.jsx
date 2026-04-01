@@ -9,19 +9,21 @@ import {
   updateDoc,
   getDoc,
   setDoc,
-  arrayUnion
+  arrayUnion,
+  runTransaction
 } from "firebase/firestore";
 
 function RideRequests() {
   const [requests, setRequests] = useState([]);
   const [user, setUser] = useState(null);
 
-  // ✅ Fix: wait for Firebase auth
+  // ✅ Wait for auth
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(setUser);
     return () => unsub();
   }, []);
 
+  // ✅ Listen for requests
   useEffect(() => {
     if (!user) return;
 
@@ -38,50 +40,71 @@ function RideRequests() {
     return () => unsub();
   }, [user]);
 
-  // ✅ ACCEPT REQUEST (safe version)
+  // ✅ ACCEPT REQUEST (FULLY SAFE)
   const acceptRequest = async (req) => {
     const rideRef = doc(db, "rides", req.rideId);
-    const profileRef = doc(db, "profiles", req.requestedBy);
     const requestRef = doc(db, "rideRequests", req.id);
+    const profileRef = doc(db, "profiles", req.requestedBy);
 
-    const rideSnap = await getDoc(rideRef);
-    if (!rideSnap.exists()) return alert("Ride no longer exists");
+    try {
+      await runTransaction(db, async (transaction) => {
+        const rideSnap = await transaction.get(rideRef);
 
-    const ride = rideSnap.data();
+        if (!rideSnap.exists()) {
+          throw new Error("Ride no longer exists");
+        }
 
-    if (ride.seats <= 0) {
-      await updateDoc(requestRef, { status: "rejected" });
-      return alert("Ride already full");
+        const ride = rideSnap.data();
+
+        // ❌ Already full
+        if (ride.seats <= 0) {
+          transaction.update(requestRef, { status: "rejected" });
+          throw new Error("Ride already full");
+        }
+
+        // ❌ Already joined (extra safety)
+        if (ride.participants.includes(req.requestedBy)) {
+          transaction.update(requestRef, { status: "accepted" });
+          throw new Error("User already in ride");
+        }
+
+        // ✅ SAFE UPDATE (atomic)
+        transaction.update(rideRef, {
+          seats: ride.seats - 1,
+          participants: arrayUnion(req.requestedBy)
+        });
+
+        // ✅ Mark request accepted
+        transaction.update(requestRef, {
+          status: "accepted"
+        });
+
+        // ✅ Update profile
+        transaction.set(
+          profileRef,
+          { currentRideId: req.rideId },
+          { merge: true }
+        );
+      });
+
+      alert("Request accepted ✅");
+
+    } catch (err) {
+      alert(err.message);
     }
-
-    // Update ride seats + participants
-    await updateDoc(rideRef, {
-      seats: ride.seats - 1,
-      participants: arrayUnion(req.requestedBy)
-    });
-
-    // Ensure profile exists, then update
-    const profileSnap = await getDoc(profileRef);
-
-    if (!profileSnap.exists()) {
-      await setDoc(profileRef, { currentRideId: req.rideId });
-    } else {
-      await updateDoc(profileRef, { currentRideId: req.rideId });
-    }
-
-    // Mark request accepted
-    await updateDoc(requestRef, {
-      status: "accepted"
-    });
-
-    alert("Request accepted");
   };
 
   // ❌ REJECT REQUEST
   const rejectRequest = async (id) => {
-    await updateDoc(doc(db, "rideRequests", id), {
-      status: "rejected"
-    });
+    try {
+      await updateDoc(doc(db, "rideRequests", id), {
+        status: "rejected"
+      });
+      alert("Request rejected ❌");
+    } catch (err) {
+      console.error(err);
+      alert("Error rejecting request");
+    }
   };
 
   return (
@@ -93,12 +116,21 @@ function RideRequests() {
       {requests.map(req => (
         <div
           key={req.id}
-          style={{ border: "1px solid #444", padding: 10, marginTop: 10 }}
+          style={{
+            border: "1px solid #444",
+            padding: 10,
+            marginTop: 10
+          }}
         >
           <p><b>User Email:</b> {req.requestedByEmail}</p>
 
-          <button onClick={() => acceptRequest(req)}>Accept</button>
-          <button onClick={() => rejectRequest(req.id)}>Reject</button>
+          <button onClick={() => acceptRequest(req)}>
+            Accept
+          </button>
+
+          <button onClick={() => rejectRequest(req.id)}>
+            Reject
+          </button>
         </div>
       ))}
     </div>

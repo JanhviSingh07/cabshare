@@ -1,47 +1,60 @@
-import { useState } from "react";
+import { db } from "../firebase";
+import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { auth } from "../firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 function Auth() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
   const navigate = useNavigate();
 
-  const signup = async () => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      alert("Signed up");
+const loginWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
 
-      // ✅ Correct redirect
-      navigate("/home");
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
 
-    } catch (err) {
-      alert(err.message);
+    const userRef = doc(db, "profiles", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    // 🧠 If profile not exists → create it
+    if (!userSnap.exists()) {
+      await setDoc(userRef, {
+        name: user.displayName,
+        email: user.email,
+        createdAt: Timestamp.now(),
+      });
     }
-  };
 
-  const login = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      alert("Logged in");
+    navigate("/home");
 
-      // ✅ Correct redirect
-      navigate("/home");
-
-    } catch (err) {
-      alert(err.message);
-    }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Google login failed");
+  }
+};
 
   return (
-    <div>
-      <h2>Auth</h2>
-      <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
-      <button onClick={signup}>Signup</button>
-      <button onClick={login}>Login</button>
+    <div className="container">
+
+      <h1 style={{ textAlign: "center" }}>🚖 CabShare</h1>
+      <p style={{ textAlign: "center" }}>
+        Safe college cab sharing
+      </p>
+
+      <div className="card" style={{ textAlign: "center", marginTop: "30px" }}>
+        
+        <h3>Login</h3>
+
+        <button
+          className="btn-primary"
+          onClick={loginWithGoogle}
+          style={{ marginTop: "15px" }}
+        >
+          🔵 Continue with Google
+        </button>
+
+      </div>
     </div>
   );
 }
