@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { db, auth } from "../firebase";
-import { collection, addDoc, Timestamp, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, Timestamp, doc, getDoc } from "firebase/firestore";
 
 function CreateRide() {
   const [from, setFrom] = useState("");
@@ -13,22 +13,20 @@ function CreateRide() {
     const user = auth.currentUser;
     if (!user) return alert("No user logged in");
 
-    // 🔒 CHECK: already in a ride
-    const profileRef = doc(db, "profiles", user.uid);
-    const profileSnap = await getDoc(profileRef);
-
-    if (profileSnap.exists() && profileSnap.data().currentRideId) {
-      return alert("You are already in a ride");
-    }
-
-    // validation
     if (!from || !to || !date || !time) {
       return alert("Please fill all fields");
     }
 
     try {
-      // ✅ create ride
-      const docRef = await addDoc(collection(db, "rides"), {
+      // 🚫 prevent multiple rides
+      const profileRef = doc(db, "profiles", user.uid);
+      const profileSnap = await getDoc(profileRef);
+
+      if (profileSnap.exists() && profileSnap.data().currentRideId) {
+        return alert("You are already in a ride");
+      }
+
+      await addDoc(collection(db, "rides"), {
         from,
         to,
         date,
@@ -37,18 +35,11 @@ function CreateRide() {
         createdBy: user.uid,
         createdByEmail: user.email,
         participants: [user.uid],
-        pendingRequests: [],
         createdAt: Timestamp.now(),
       });
 
-      // ✅ update profile (VERY IMPORTANT)
-      await setDoc(profileRef, {
-        currentRideId: docRef.id
-      }, { merge: true });
+      alert("Ride created 🚀");
 
-      alert("Ride created successfully 🚀");
-
-      // reset
       setFrom("");
       setTo("");
       setDate("");
@@ -62,47 +53,66 @@ function CreateRide() {
   };
 
   return (
-    <div className="container">
-      <h2>🚗 Create Ride</h2>
+    <div className="max-w-2xl mx-auto mt-10">
 
-      <div className="card">
-        <div className="input-group">
+      <h2 className="text-2xl font-bold mb-6 text-center">
+        🚗 Create Ride
+      </h2>
+
+      <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
+
+        {/* FROM + TO */}
+        <div className="flex gap-4">
           <input
+            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="From"
             value={from}
             onChange={e => setFrom(e.target.value)}
           />
 
           <input
+            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="To"
             value={to}
             onChange={e => setTo(e.target.value)}
           />
+        </div>
 
+        {/* DATE + TIME */}
+        <div className="flex gap-4">
           <input
             type="date"
+            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             value={date}
             onChange={e => setDate(e.target.value)}
           />
 
           <input
             type="time"
+            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             value={time}
             onChange={e => setTime(e.target.value)}
           />
-
-          <input
-            type="number"
-            min="1"
-            value={seats}
-            onChange={e => setSeats(Number(e.target.value))}
-            placeholder="Seats"
-          />
         </div>
 
-        <button className="btn-success" onClick={createRide}>
+        {/* SEATS */}
+        <input
+          type="number"
+          min="1"
+          className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
+          value={seats}
+          onChange={e => setSeats(Number(e.target.value))}
+          placeholder="Seats"
+        />
+
+        {/* BUTTON */}
+        <button
+          onClick={createRide}
+          className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold"
+        >
           Create Ride 🚀
         </button>
+
       </div>
     </div>
   );

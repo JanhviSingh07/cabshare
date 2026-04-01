@@ -9,22 +9,14 @@ import {
   updateDoc,
   getDoc,
   setDoc,
-  arrayUnion,
-  runTransaction
+  arrayUnion
 } from "firebase/firestore";
 
 function RideRequests() {
   const [requests, setRequests] = useState([]);
-  const [user, setUser] = useState(null);
 
-  // ✅ Wait for auth
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(setUser);
-    return () => unsub();
-  }, []);
-
-  // ✅ Listen for requests
-  useEffect(() => {
+    const user = auth.currentUser;
     if (!user) return;
 
     const q = query(
@@ -38,101 +30,112 @@ function RideRequests() {
     });
 
     return () => unsub();
-  }, [user]);
+  }, []);
 
-  // ✅ ACCEPT REQUEST (FULLY SAFE)
+  // ✅ ACCEPT
   const acceptRequest = async (req) => {
-    const rideRef = doc(db, "rides", req.rideId);
-    const requestRef = doc(db, "rideRequests", req.id);
-    const profileRef = doc(db, "profiles", req.requestedBy);
-
     try {
-      await runTransaction(db, async (transaction) => {
-        const rideSnap = await transaction.get(rideRef);
+      const rideRef = doc(db, "rides", req.rideId);
+      const requestRef = doc(db, "rideRequests", req.id);
+      const profileRef = doc(db, "profiles", req.requestedBy);
 
-        if (!rideSnap.exists()) {
-          throw new Error("Ride no longer exists");
-        }
+      const rideSnap = await getDoc(rideRef);
+      if (!rideSnap.exists()) return alert("Ride not found");
 
-        const ride = rideSnap.data();
+      const ride = rideSnap.data();
 
-        // ❌ Already full
-        if (ride.seats <= 0) {
-          transaction.update(requestRef, { status: "rejected" });
-          throw new Error("Ride already full");
-        }
+      if (ride.seats <= 0) {
+        await updateDoc(requestRef, { status: "rejected" });
+        return alert("Ride full");
+      }
 
-        // ❌ Already joined (extra safety)
-        if (ride.participants.includes(req.requestedBy)) {
-          transaction.update(requestRef, { status: "accepted" });
-          throw new Error("User already in ride");
-        }
-
-        // ✅ SAFE UPDATE (atomic)
-        transaction.update(rideRef, {
-          seats: ride.seats - 1,
-          participants: arrayUnion(req.requestedBy)
-        });
-
-        // ✅ Mark request accepted
-        transaction.update(requestRef, {
-          status: "accepted"
-        });
-
-        // ✅ Update profile
-        transaction.set(
-          profileRef,
-          { currentRideId: req.rideId },
-          { merge: true }
-        );
+      // update ride
+      await updateDoc(rideRef, {
+        seats: ride.seats - 1,
+        participants: arrayUnion(req.requestedBy)
       });
 
-      alert("Request accepted ✅");
+      // update profile
+      const profileSnap = await getDoc(profileRef);
+
+      if (!profileSnap.exists()) {
+        await setDoc(profileRef, { currentRideId: req.rideId });
+      } else {
+        await updateDoc(profileRef, { currentRideId: req.rideId });
+      }
+
+      // update request
+      await updateDoc(requestRef, { status: "accepted" });
+
+      alert("Accepted ✅");
 
     } catch (err) {
-      alert(err.message);
+      console.error(err);
+      alert("Error");
     }
   };
 
-  // ❌ REJECT REQUEST
+  // ❌ REJECT
   const rejectRequest = async (id) => {
-    try {
-      await updateDoc(doc(db, "rideRequests", id), {
-        status: "rejected"
-      });
-      alert("Request rejected ❌");
-    } catch (err) {
-      console.error(err);
-      alert("Error rejecting request");
-    }
+    await updateDoc(doc(db, "rideRequests", id), {
+      status: "rejected"
+    });
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Ride Join Requests</h2>
+    <div className="max-w-3xl mx-auto mt-10">
 
-      {requests.length === 0 && <p>No pending requests</p>}
+      <h2 className="text-2xl font-bold text-center mb-6">
+        📩 Ride Requests
+      </h2>
 
-      {requests.map(req => (
-        <div
-          key={req.id}
-          style={{
-            border: "1px solid #444",
-            padding: 10,
-            marginTop: 10
-          }}
-        >
-          <p><b>User Email:</b> {req.requestedByEmail}</p>
+      {requests.length === 0 && (
+        <p className="text-center text-gray-400">
+          No pending requests
+        </p>
+      )}
 
-          <button onClick={() => acceptRequest(req)}>
-            Accept
-          </button>
+      <div className="space-y-4">
+        {requests.map(req => (
+          <div
+            key={req.id}
+            className="bg-slate-800 p-5 rounded-xl shadow-md"
+          >
+            {/* USER INFO */}
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <p className="font-semibold">
+                  {req.requestedByEmail}
+                </p>
+                <p className="text-sm text-gray-400">
+                  Wants to join your ride
+                </p>
+              </div>
 
-          <button onClick={() => rejectRequest(req.id)}>
-            Reject
-          </button>
-        </div>
-      ))}
+              <span className="text-yellow-400 text-sm">
+                Pending
+              </span>
+            </div>
+
+            {/* ACTION BUTTONS */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => acceptRequest(req)}
+                className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg font-medium"
+              >
+                ✅ Accept
+              </button>
+
+              <button
+                onClick={() => rejectRequest(req.id)}
+                className="flex-1 bg-red-500 hover:bg-red-600 p-2 rounded-lg font-medium"
+              >
+                ❌ Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

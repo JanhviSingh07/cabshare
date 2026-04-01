@@ -6,60 +6,92 @@ function Home() {
   const user = auth.currentUser;
 
   return (
-    <div className="container">
-      
-      {/* HEADER */}
-      <h1 style={{ textAlign: "center" }}>🚖 CabShare</h1>
-      <p style={{ textAlign: "center", marginBottom: "10px" }}>
-        Find or Share your ride easily
-      </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6">
 
-      {/* 👤 USER INFO */}
-      <div style={{ textAlign: "center", marginBottom: "20px", opacity: 0.8 }}>
-        <p>👋 Welcome, <b>{user?.displayName}</b></p>
-        <p style={{ fontSize: "14px" }}>{user?.email}</p>
+      {/* 🔝 HEADER */}
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-2xl font-bold">🚖 CabShare</h1>
+
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-300">
+            {user?.displayName}
+          </span>
+
+          <button
+            onClick={() => {
+              auth.signOut();
+              window.location.href = "/";
+            }}
+            className="bg-red-500 hover:bg-red-600 px-4 py-1 rounded-lg text-sm"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* MAIN ACTIONS */}
-      <div className="card">
-        <h3>Main Actions</h3>
+      {/* 🎯 MAIN ACTIONS */}
+      <div className="grid md:grid-cols-2 gap-6">
 
-        <div className="button-group">
+        {/* CREATE RIDE */}
+        <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition">
+          <h2 className="text-xl font-semibold mb-2">➕ Create Ride</h2>
+          <p className="text-gray-400 mb-4">
+            Offer a ride to others going your way
+          </p>
+
           <button
-            className="btn-success"
             onClick={() => navigate("/create-ride")}
+            className="bg-green-500 hover:bg-green-600 w-full py-2 rounded-lg"
           >
-            ➕ Create Ride
+            Create Ride
           </button>
+        </div>
+
+        {/* SEARCH RIDE */}
+        <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition">
+          <h2 className="text-xl font-semibold mb-2">🔍 Find Ride</h2>
+          <p className="text-gray-400 mb-4">
+            Search for available rides
+          </p>
 
           <button
-            className="btn-primary"
             onClick={() => navigate("/search-ride")}
+            className="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg"
           >
-            🔍 Find Ride
+            Search Ride
           </button>
         </div>
-      </div>
 
-      {/* SECONDARY ACTIONS */}
-      <div className="card">
-        <h3>Manage</h3>
+        {/* REQUESTS */}
+        <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition">
+          <h2 className="text-xl font-semibold mb-2">📩 Ride Requests</h2>
+          <p className="text-gray-400 mb-4">
+            Manage incoming join requests
+          </p>
 
-        <div className="button-group">
           <button
-            className="btn-primary"
             onClick={() => navigate("/requests")}
+            className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-lg"
           >
-            📩 Ride Requests
-          </button>
-
-          <button
-            className="btn-primary"
-            onClick={() => navigate("/status")}
-          >
-            📊 My Ride Status
+            View Requests
           </button>
         </div>
+
+        {/* STATUS */}
+        <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition">
+          <h2 className="text-xl font-semibold mb-2">📊 My Ride</h2>
+          <p className="text-gray-400 mb-4">
+            Check your ride and contacts
+          </p>
+
+          <button
+            onClick={() => navigate("/status")}
+            className="bg-purple-500 hover:bg-purple-600 w-full py-2 rounded-lg"
+          >
+            View Status
+          </button>
+        </div>
+
       </div>
 
     </div>

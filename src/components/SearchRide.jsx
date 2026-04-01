@@ -15,61 +15,48 @@ function SearchRide() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
   const [rides, setRides] = useState([]);
 
-  // 🔍 Search rides
+  // 🔍 Search
   const searchRides = async () => {
     if (!from || !to || !date) {
-      return alert("Enter From, To and Date");
+      return alert("Enter all fields");
     }
 
-    try {
-      const q = query(
-        collection(db, "rides"),
-        where("from", "==", from),
-        where("to", "==", to),
-        where("date", "==", date)
-      );
+    const q = query(
+      collection(db, "rides"),
+      where("from", "==", from),
+      where("to", "==", to),
+      where("date", "==", date)
+    );
 
-      const snapshot = await getDocs(q);
-
-      const results = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      setRides(results);
-
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching rides");
-    }
+    const snap = await getDocs(q);
+    setRides(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
-  // 📩 Request to join ride
+  // 📩 Request
   const requestToJoin = async (ride) => {
     const user = auth.currentUser;
     if (!user) return alert("Login first");
 
     try {
       if (ride.createdBy === user.uid) {
-        return alert("You cannot join your own ride");
+        return alert("Your own ride");
       }
 
       if (ride.seats <= 0) {
-        return alert("Ride is already full");
+        return alert("Ride full");
       }
 
       if (ride.participants?.includes(user.uid)) {
-        return alert("You are already in this ride");
+        return alert("Already joined");
       }
 
       const profileRef = doc(db, "profiles", user.uid);
       const profileSnap = await getDoc(profileRef);
 
       if (profileSnap.exists() && profileSnap.data().currentRideId) {
-        return alert("You are already in another ride");
+        return alert("Already in another ride");
       }
 
       const existingReq = query(
@@ -80,9 +67,7 @@ function SearchRide() {
       );
 
       const reqSnap = await getDocs(existingReq);
-      if (!reqSnap.empty) {
-        return alert("You have already requested this ride");
-      }
+      if (!reqSnap.empty) return alert("Already requested");
 
       await addDoc(collection(db, "rideRequests"), {
         rideId: ride.id,
@@ -97,64 +82,108 @@ function SearchRide() {
 
     } catch (err) {
       console.error(err);
-      alert("Error sending request");
+      alert("Error");
     }
   };
 
   return (
-    <div className="container">
-      <h2>🚖 Search Ride</h2>
+    <div className="max-w-3xl mx-auto mt-10">
 
-      {/* SEARCH FORM */}
-      <div className="card">
-        <div className="input-group">
-          <input placeholder="From" value={from} onChange={e => setFrom(e.target.value)} />
-          <input placeholder="To" value={to} onChange={e => setTo(e.target.value)} />
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} />
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} />
+      <h2 className="text-2xl font-bold mb-6 text-center">
+        🔍 Find a Ride
+      </h2>
+
+      {/* 🔎 SEARCH BOX */}
+      <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
+
+        <div className="flex gap-3">
+          <input
+            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            placeholder="From"
+            value={from}
+            onChange={e => setFrom(e.target.value)}
+          />
+
+          <input
+            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            placeholder="To"
+            value={to}
+            onChange={e => setTo(e.target.value)}
+          />
         </div>
 
-        <button className="btn-success" onClick={searchRides}>
-          Search 🚀
+        <input
+          type="date"
+          className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
+          value={date}
+          onChange={e => setDate(e.target.value)}
+        />
+
+        <button
+          onClick={searchRides}
+          className="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded-lg font-semibold"
+        >
+          Search Ride 🚀
         </button>
       </div>
 
-      {/* RESULTS */}
-      <h3>Available Rides</h3>
+      {/* 🚗 RESULTS */}
+      <div className="mt-6 space-y-4">
 
-      {rides.length === 0 && <p>No rides found</p>}
+        {rides.length === 0 && (
+          <p className="text-center text-gray-400">
+            No rides found
+          </p>
+        )}
 
-      {rides.map(ride => {
-        const user = auth.currentUser;
-        const isOwner = ride.createdBy === user?.uid;
-        const isJoined = ride.participants?.includes(user?.uid);
-        const isFull = ride.seats <= 0;
+        {rides.map(ride => {
+          const user = auth.currentUser;
+          const isOwner = ride.createdBy === user?.uid;
+          const isJoined = ride.participants?.includes(user?.uid);
+          const isFull = ride.seats <= 0;
 
-        return (
-          <div key={ride.id} className="card">
-            <h3>{ride.from} → {ride.to}</h3>
-
-            <p>📅 {ride.date} | ⏰ {ride.time}</p>
-            <p>👥 Participants: {ride.participants?.length || 0}</p>
-            <p>🪑 Seats Left: {ride.seats}</p>
-            <p>👤 Owner: {ride.createdByEmail || "N/A"}</p>
-
-            <button
-              className="btn-primary"
-              disabled={isOwner || isJoined || isFull}
-              onClick={() => requestToJoin(ride)}
+          return (
+            <div
+              key={ride.id}
+              className="bg-slate-800 p-5 rounded-xl shadow-md space-y-2"
             >
-              {isOwner
-                ? "Your Ride"
-                : isJoined
-                ? "Joined"
-                : isFull
-                ? "Full"
-                : "Request to Join"}
-            </button>
-          </div>
-        );
-      })}
+              <h3 className="text-lg font-semibold">
+                {ride.from} → {ride.to}
+              </h3>
+
+              <p className="text-sm text-gray-400">
+                📅 {ride.date} | ⏰ {ride.time}
+              </p>
+
+              <p>👤 Owner: {ride.createdByEmail}</p>
+              <p>💺 Seats left: {ride.seats}</p>
+              <p>👥 Participants: {ride.participants?.length || 0}</p>
+
+              <button
+                disabled={isOwner || isJoined || isFull}
+                onClick={() => requestToJoin(ride)}
+                className={`w-full mt-2 p-2 rounded-lg font-medium ${
+                  isFull
+                    ? "bg-gray-500"
+                    : isJoined
+                    ? "bg-green-600"
+                    : isOwner
+                    ? "bg-yellow-500"
+                    : "bg-blue-500 hover:bg-blue-600"
+                }`}
+              >
+                {isOwner
+                  ? "Your Ride"
+                  : isJoined
+                  ? "Joined"
+                  : isFull
+                  ? "Full"
+                  : "Request to Join"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

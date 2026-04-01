@@ -23,29 +23,25 @@ function App() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className="container">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6">
 
       {/* 🔥 HEADER */}
       {user && (
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px"
-        }}>
-          <h2>🚖 CabShare</h2>
+  <div className="flex justify-between items-center mb-6">
+    <h2 className="text-xl font-bold">🚖 CabShare</h2>
 
-          <button
-            className="btn-danger"
-            onClick={() => {
-              auth.signOut();
-              window.location.href = "/";
-            }}
-          >
-            Logout
-          </button>
-        </div>
-      )}
+    <button
+      onClick={() => {
+        auth.signOut();
+        window.location.href = "/";
+      }}
+      className="bg-red-500 hover:bg-red-600 px-4 py-1 rounded-lg"
+    >
+      Logout
+    </button>
+  </div>
+)}
+      
 
       {/* ROUTES */}
       <Routes>
