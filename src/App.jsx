@@ -8,6 +8,9 @@ import RideRequests from "./components/RideRequests";
 import RideStatus from "./components/RideStatus";
 import { useEffect, useState } from "react";
 import { auth } from "./firebase";
+import Profile from "./components/Profile";
+
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -67,6 +70,7 @@ function App() {
           </>
         ) : (
           <>
+          <Route path="/profile" element={<Profile />} />
             <Route path="/" element={<Navigate to="/home" />} />
             <Route path="/home" element={<Home />} />
             <Route path="/create-ride" element={<CreateRide />} />
@@ -74,6 +78,7 @@ function App() {
             <Route path="/requests" element={<RideRequests />} />
             <Route path="/status" element={<RideStatus />} />
           </>
+          
         )}
       </Routes>
     </div>

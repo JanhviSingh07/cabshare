@@ -14,19 +14,37 @@ import {
 
 function RideRequests() {
   const [requests, setRequests] = useState([]);
+  const [profiles, setProfiles] = useState({});
 
+  // 🔥 FETCH ALL REQUESTS (pending + accepted)
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
 
     const q = query(
       collection(db, "rideRequests"),
-      where("rideOwner", "==", user.uid),
-      where("status", "==", "pending")
+      where("rideOwner", "==", user.uid)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsub = onSnapshot(q, async (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setRequests(data);
+
+      // 🔥 FETCH PROFILE ONLY FOR ACCEPTED USERS
+      const profileData = {};
+
+      for (let req of data) {
+        if (req.status === "accepted") {
+          const ref = doc(db, "profiles", req.requestedBy);
+          const snap = await getDoc(ref);
+
+          if (snap.exists()) {
+            profileData[req.requestedBy] = snap.data();
+          }
+        }
+      }
+
+      setProfiles(profileData);
     });
 
     return () => unsub();
@@ -65,21 +83,29 @@ function RideRequests() {
       }
 
       // update request
-      await updateDoc(requestRef, { status: "accepted" });
+      await updateDoc(requestRef, {
+        status: "accepted",
+        showContact: true
+      });
 
       alert("Accepted ✅");
 
     } catch (err) {
       console.error(err);
-      alert("Error");
+      alert("Error accepting request");
     }
   };
 
   // ❌ REJECT
   const rejectRequest = async (id) => {
-    await updateDoc(doc(db, "rideRequests", id), {
-      status: "rejected"
-    });
+    try {
+      await updateDoc(doc(db, "rideRequests", id), {
+        status: "rejected"
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Error rejecting request");
+    }
   };
 
   return (
@@ -91,50 +117,79 @@ function RideRequests() {
 
       {requests.length === 0 && (
         <p className="text-center text-gray-400">
-          No pending requests
+          No requests yet
         </p>
       )}
 
       <div className="space-y-4">
-        {requests.map(req => (
-          <div
-            key={req.id}
-            className="bg-slate-800 p-5 rounded-xl shadow-md"
-          >
-            {/* USER INFO */}
-            <div className="flex justify-between items-center mb-3">
-              <div>
-                <p className="font-semibold">
-                  {req.requestedByEmail}
-                </p>
-                <p className="text-sm text-gray-400">
-                  Wants to join your ride
-                </p>
+        {requests.map(req => {
+          const profile = profiles[req.requestedBy];
+
+          return (
+            <div
+              key={req.id}
+              className="bg-slate-800 p-5 rounded-xl shadow-md"
+            >
+              {/* USER INFO */}
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <p className="font-semibold">
+                    {req.requestedByEmail}
+                  </p>
+
+                  <p className="text-sm text-gray-400">
+                    Wants to join your ride
+                  </p>
+
+                  {/* 🔥 CONTACT ONLY AFTER ACCEPT */}
+                  {req.status === "accepted" && profile?.phone && (
+                    <p className="text-green-400 text-sm">
+                      📞 {profile.phone}
+                    </p>
+                  )}
+
+                  {req.status === "accepted" && profile?.college && (
+                    <p className="text-xs text-gray-500">
+                      🎓 {profile.college}
+                    </p>
+                  )}
+                </div>
+
+                {/* 🔥 STATUS BADGE */}
+                <span
+                  className={`text-sm ${
+                    req.status === "pending"
+                      ? "text-yellow-400"
+                      : req.status === "accepted"
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {req.status.toUpperCase()}
+                </span>
               </div>
 
-              <span className="text-yellow-400 text-sm">
-                Pending
-              </span>
-            </div>
+              {/* 🔥 BUTTONS ONLY IF PENDING */}
+              {req.status === "pending" && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => acceptRequest(req)}
+                    className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg font-medium transition"
+                  >
+                    ✅ Accept
+                  </button>
 
-            {/* ACTION BUTTONS */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => acceptRequest(req)}
-                className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg font-medium"
-              >
-                ✅ Accept
-              </button>
-
-              <button
-                onClick={() => rejectRequest(req.id)}
-                className="flex-1 bg-red-500 hover:bg-red-600 p-2 rounded-lg font-medium"
-              >
-                ❌ Reject
-              </button>
+                  <button
+                    onClick={() => rejectRequest(req.id)}
+                    className="flex-1 bg-red-500 hover:bg-red-600 p-2 rounded-lg font-medium transition"
+                  >
+                    ❌ Reject
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

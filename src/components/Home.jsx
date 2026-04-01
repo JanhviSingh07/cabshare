@@ -5,6 +5,10 @@ function Home() {
   const navigate = useNavigate();
   const user = auth.currentUser;
 
+  const handleLogout = async () => {
+    await auth.signOut();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6">
 
@@ -14,15 +18,12 @@ function Home() {
 
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-300">
-            {user?.displayName}
+            {user?.displayName || user?.email}
           </span>
 
           <button
-            onClick={() => {
-              auth.signOut();
-              window.location.href = "/";
-            }}
-            className="bg-red-500 hover:bg-red-600 px-4 py-1 rounded-lg text-sm"
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 px-4 py-1 rounded-lg text-sm transition"
           >
             Logout
           </button>
@@ -41,7 +42,7 @@ function Home() {
 
           <button
             onClick={() => navigate("/create-ride")}
-            className="bg-green-500 hover:bg-green-600 w-full py-2 rounded-lg"
+            className="bg-green-500 hover:bg-green-600 w-full py-2 rounded-lg transition"
           >
             Create Ride
           </button>
@@ -56,7 +57,7 @@ function Home() {
 
           <button
             onClick={() => navigate("/search-ride")}
-            className="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg"
+            className="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg transition"
           >
             Search Ride
           </button>
@@ -71,7 +72,7 @@ function Home() {
 
           <button
             onClick={() => navigate("/requests")}
-            className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-lg"
+            className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-lg transition"
           >
             View Requests
           </button>
@@ -86,9 +87,24 @@ function Home() {
 
           <button
             onClick={() => navigate("/status")}
-            className="bg-purple-500 hover:bg-purple-600 w-full py-2 rounded-lg"
+            className="bg-purple-500 hover:bg-purple-600 w-full py-2 rounded-lg transition"
           >
             View Status
+          </button>
+        </div>
+
+        {/* 🔥 PROFILE (NEW ADDITION) */}
+        <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition md:col-span-2">
+          <h2 className="text-xl font-semibold mb-2">👤 Profile</h2>
+          <p className="text-gray-400 mb-4">
+            View and update your personal details
+          </p>
+
+          <button
+            onClick={() => navigate("/profile")}
+            className="bg-indigo-500 hover:bg-indigo-600 w-full py-2 rounded-lg transition"
+          >
+            Go to Profile
           </button>
         </div>
 
