@@ -37,24 +37,17 @@ const loginWithGoogle = async () => {
   return (
     <div className="container">
 
-      <h1 style={{ textAlign: "center" }}>🚖 CabShare</h1>
-      <p style={{ textAlign: "center" }}>
-        Safe college cab sharing
-      </p>
+    <h1 style={{ textAlign: "center" }}>🚖 CabShare</h1>
 
-      <div className="card" style={{ textAlign: "center", marginTop: "30px" }}>
-        
-        <h3>Login</h3>
+<p style={{ textAlign: "center" }}>
+  Safe college cab sharing
+</p>
 
-        <button
-          className="btn-primary"
-          onClick={loginWithGoogle}
-          style={{ marginTop: "15px" }}
-        >
-          🔵 Continue with Google
-        </button>
-
-      </div>
+<div className="card" style={{ textAlign: "center", marginTop: "30px" }}>
+  <button className="btn-primary" onClick={loginWithGoogle}>
+    🔵 Continue with Google
+  </button>
+</div>
     </div>
   );
 }
