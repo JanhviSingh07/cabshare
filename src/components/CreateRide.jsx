@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { db, auth } from "../firebase";
-import { collection, addDoc, Timestamp, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  Timestamp,
+  doc,
+  getDoc,
+  updateDoc
+} from "firebase/firestore";
 
 function CreateRide() {
   const [from, setFrom] = useState("");
@@ -8,6 +15,7 @@ function CreateRide() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [seats, setSeats] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const createRide = async () => {
     const user = auth.currentUser;
@@ -17,16 +25,20 @@ function CreateRide() {
       return alert("Please fill all fields");
     }
 
+    setLoading(true);
+
     try {
       // 🚫 prevent multiple rides
       const profileRef = doc(db, "profiles", user.uid);
       const profileSnap = await getDoc(profileRef);
 
       if (profileSnap.exists() && profileSnap.data().currentRideId) {
+        setLoading(false);
         return alert("You are already in a ride");
       }
 
-      await addDoc(collection(db, "rides"), {
+      // 🚗 CREATE RIDE
+      const rideRef = await addDoc(collection(db, "rides"), {
         from,
         to,
         date,
@@ -38,8 +50,14 @@ function CreateRide() {
         createdAt: Timestamp.now(),
       });
 
+      // 🔥 IMPORTANT: SET OWNER AS ACTIVE RIDER
+      await updateDoc(profileRef, {
+        currentRideId: rideRef.id
+      });
+
       alert("Ride created 🚀");
 
+      // reset form
       setFrom("");
       setTo("");
       setDate("");
@@ -50,6 +68,8 @@ function CreateRide() {
       console.error(err);
       alert("Error creating ride");
     }
+
+    setLoading(false);
   };
 
   return (
@@ -108,9 +128,10 @@ function CreateRide() {
         {/* BUTTON */}
         <button
           onClick={createRide}
-          className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold"
+          disabled={loading}
+          className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold transition"
         >
-          Create Ride 🚀
+          {loading ? "Creating..." : "Create Ride 🚀"}
         </button>
 
       </div>

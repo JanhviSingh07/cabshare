@@ -1,80 +1,74 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
   doc,
   getDoc,
   updateDoc,
-  arrayRemove
+  collection,
+  query,
+  where,
+  onSnapshot
 } from "firebase/firestore";
 
 function RideStatus() {
-  const [myRide, setMyRide] = useState(null);
-  const [contacts, setContacts] = useState([]);
+  const [ride, setRide] = useState(null);
+  const [rideId, setRideId] = useState(null);
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+    const fetchRide = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
 
-    const q = query(
-      collection(db, "rides"),
-      where("participants", "array-contains", user.uid)
-    );
+      const profileSnap = await getDoc(doc(db, "profiles", user.uid));
+      if (!profileSnap.exists()) return;
 
-    const unsub = onSnapshot(q, async (snap) => {
-      if (snap.empty) {
-        setMyRide(null);
-        return;
+      const profile = profileSnap.data();
+
+      if (!profile.currentRideId) return;
+
+      setRideId(profile.currentRideId);
+
+      const rideSnap = await getDoc(
+        doc(db, "rides", profile.currentRideId)
+      );
+
+      if (rideSnap.exists()) {
+        setRide({ id: rideSnap.id, ...rideSnap.data() });
       }
+    };
 
-      const ride = { id: snap.docs[0].id, ...snap.docs[0].data() };
-      setMyRide(ride);
-
-      const users = [];
-
-      for (let uid of ride.participants) {
-        const profileRef = doc(db, "profiles", uid);
-        const profileSnap = await getDoc(profileRef);
-
-        if (profileSnap.exists()) {
-          users.push({
-            uid,
-            name: profileSnap.data().name || "User",
-            phone: profileSnap.data().phone || "N/A"
-          });
-        }
-      }
-
-      setContacts(users);
-    });
-
-    return () => unsub();
+    fetchRide();
   }, []);
 
-  // 🔥 LEAVE RIDE FUNCTION
+  // 🚪 LEAVE RIDE
   const leaveRide = async () => {
     const user = auth.currentUser;
-    if (!user || !myRide) return;
 
     try {
-      const rideRef = doc(db, "rides", myRide.id);
+      const rideRef = doc(db, "rides", rideId);
+      const rideSnap = await getDoc(rideRef);
 
-      // remove user + increase seats
+      if (!rideSnap.exists()) return;
+
+      const rideData = rideSnap.data();
+
+      // remove user from participants
+      const updatedParticipants = rideData.participants.filter(
+        (uid) => uid !== user.uid
+      );
+
       await updateDoc(rideRef, {
-        participants: arrayRemove(user.uid),
-        seats: myRide.seats + 1
+        participants: updatedParticipants,
+        seats: rideData.seats + 1
       });
 
-      // clear profile
-      const profileRef = doc(db, "profiles", user.uid);
-      await updateDoc(profileRef, {
+      // clear user profile
+      await updateDoc(doc(db, "profiles", user.uid), {
         currentRideId: null
       });
 
-      alert("You left the ride");
+      alert("Left ride ❌");
+      window.location.reload();
 
     } catch (err) {
       console.error(err);
@@ -82,42 +76,74 @@ function RideStatus() {
     }
   };
 
+  // ❌ CANCEL RIDE (OWNER)
+  const cancelRide = async () => {
+    try {
+      const rideRef = doc(db, "rides", rideId);
+      const rideSnap = await getDoc(rideRef);
+
+      if (!rideSnap.exists()) return;
+
+      const rideData = rideSnap.data();
+
+      // clear all participants
+      for (let uid of rideData.participants) {
+        await updateDoc(doc(db, "profiles", uid), {
+          currentRideId: null
+        });
+      }
+
+      // mark ride as cancelled
+      await updateDoc(rideRef, {
+        cancelled: true
+      });
+
+      alert("Ride cancelled ❌");
+      window.location.reload();
+
+    } catch (err) {
+      console.error(err);
+      alert("Error cancelling ride");
+    }
+  };
+
+  if (!ride) {
+    return (
+      <p className="text-center mt-10 text-gray-400">
+        No active ride
+      </p>
+    );
+  }
+
+  const user = auth.currentUser;
+  const isOwner = ride.createdBy === user.uid;
+
   return (
-    <div className="container">
-      <h2>📊 Your Ride Status</h2>
+    <div className="max-w-3xl mx-auto mt-10">
 
-      {!myRide && (
-        <p style={{ textAlign: "center", opacity: 0.7 }}>
-          😕 You have not joined any ride yet.
-        </p>
-      )}
+      <div className="bg-slate-800 p-6 rounded-xl shadow-lg">
 
-      {myRide && (
-        <div className="card">
-          <h3>{myRide.from} → {myRide.to}</h3>
+        <h2 className="text-xl font-bold mb-3">
+          🚗 Your Ride
+        </h2>
 
-          <p>📅 {myRide.date}</p>
-          <p>⏰ {myRide.time}</p>
-          <p>🪑 Seats Left: {myRide.seats}</p>
+        <p>{ride.from} → {ride.to}</p>
+        <p>📅 {ride.date} | ⏰ {ride.time}</p>
+        <p>💺 Seats left: {ride.seats}</p>
 
-          <h3>👥 Ride Members</h3>
+        {/* 🔥 ACTION BUTTON */}
+        <button
+          onClick={isOwner ? cancelRide : leaveRide}
+          className={`mt-4 w-full p-2 rounded-lg font-medium ${
+            isOwner
+              ? "bg-red-500 hover:bg-red-600"
+              : "bg-yellow-500 hover:bg-yellow-600"
+          }`}
+        >
+          {isOwner ? "Cancel Ride ❌" : "Leave Ride 🚪"}
+        </button>
 
-          {contacts.map(c => (
-            <p key={c.uid}>
-              <b>{c.name}</b> — 📞 {c.phone}
-            </p>
-          ))}
-
-          {/* 🔥 LEAVE BUTTON */}
-          <button
-            className="btn-danger"
-            onClick={leaveRide}
-            style={{ marginTop: "15px" }}
-          >
-            ❌ Leave Ride
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

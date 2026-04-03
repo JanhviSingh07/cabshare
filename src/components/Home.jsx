@@ -1,37 +1,13 @@
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
 
 function Home() {
   const navigate = useNavigate();
-  const user = auth.currentUser;
-
-  const handleLogout = async () => {
-    await auth.signOut();
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6">
-
-      {/* 🔝 HEADER */}
-      <div className="flex justify-between items-center mb-10">
-        <h1 className="text-2xl font-bold">🚖 CabShare</h1>
-
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-300">
-            {user?.displayName || user?.email}
-          </span>
-
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 px-4 py-1 rounded-lg text-sm transition"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen text-white">
 
       {/* 🎯 MAIN ACTIONS */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
 
         {/* CREATE RIDE */}
         <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition">
@@ -42,7 +18,7 @@ function Home() {
 
           <button
             onClick={() => navigate("/create-ride")}
-            className="bg-green-500 hover:bg-green-600 w-full py-2 rounded-lg transition"
+            className="bg-green-500 hover:bg-green-600 w-full py-2 rounded-lg"
           >
             Create Ride
           </button>
@@ -57,7 +33,7 @@ function Home() {
 
           <button
             onClick={() => navigate("/search-ride")}
-            className="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg transition"
+            className="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg"
           >
             Search Ride
           </button>
@@ -72,7 +48,7 @@ function Home() {
 
           <button
             onClick={() => navigate("/requests")}
-            className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-lg"
           >
             View Requests
           </button>
@@ -87,14 +63,14 @@ function Home() {
 
           <button
             onClick={() => navigate("/status")}
-            className="bg-purple-500 hover:bg-purple-600 w-full py-2 rounded-lg transition"
+            className="bg-purple-500 hover:bg-purple-600 w-full py-2 rounded-lg"
           >
             View Status
           </button>
         </div>
 
-        {/* 🔥 PROFILE (NEW ADDITION) */}
-        <div className="bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition md:col-span-2">
+        {/* PROFILE */}
+        <div className="md:col-span-2 bg-slate-900/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg hover:scale-105 transition">
           <h2 className="text-xl font-semibold mb-2">👤 Profile</h2>
           <p className="text-gray-400 mb-4">
             View and update your personal details
@@ -102,14 +78,13 @@ function Home() {
 
           <button
             onClick={() => navigate("/profile")}
-            className="bg-indigo-500 hover:bg-indigo-600 w-full py-2 rounded-lg transition"
+            className="bg-indigo-500 hover:bg-indigo-600 w-full py-2 rounded-lg"
           >
             Go to Profile
           </button>
         </div>
 
       </div>
-
     </div>
   );
 }

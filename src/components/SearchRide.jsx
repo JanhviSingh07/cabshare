@@ -16,65 +16,98 @@ function SearchRide() {
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
   const [rides, setRides] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // 🔍 Search
+  // 🔍 SEARCH RIDES
   const searchRides = async () => {
     if (!from || !to || !date) {
       return alert("Enter all fields");
     }
 
-    const q = query(
-      collection(db, "rides"),
-      where("from", "==", from),
-      where("to", "==", to),
-      where("date", "==", date)
-    );
+    setLoading(true);
 
-    const snap = await getDocs(q);
-    setRides(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    try {
+      const q = query(
+        collection(db, "rides"),
+        where("from", "==", from),
+        where("to", "==", to),
+        where("date", "==", date)
+      );
+
+      const snap = await getDocs(q);
+
+      const results = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setRides(results);
+
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching rides");
+    }
+
+    setLoading(false);
   };
 
-  // 📩 Request
+  // 📩 REQUEST TO JOIN
   const requestToJoin = async (ride) => {
     const user = auth.currentUser;
     if (!user) return alert("Login first");
 
     try {
+      // ❌ Own ride
       if (ride.createdBy === user.uid) {
-        return alert("Your own ride");
+        return alert("This is your ride");
       }
 
+      // ❌ Full ride
       if (ride.seats <= 0) {
-        return alert("Ride full");
+        return alert("Ride is full");
       }
 
+      // ❌ Already joined
       if (ride.participants?.includes(user.uid)) {
-        return alert("Already joined");
+        return alert("Already joined this ride");
       }
 
+      // 🔥 Get profile
       const profileRef = doc(db, "profiles", user.uid);
       const profileSnap = await getDoc(profileRef);
 
-      if (profileSnap.exists() && profileSnap.data().currentRideId) {
-        return alert("Already in another ride");
+      if (!profileSnap.exists()) {
+        return alert("Complete your profile first");
       }
 
+      const profile = profileSnap.data();
+
+      // ❌ Already in another ride
+      if (profile.currentRideId) {
+        return alert("You are already in a ride");
+      }
+
+      // ❌ Already requested (any status)
       const existingReq = query(
         collection(db, "rideRequests"),
         where("rideId", "==", ride.id),
-        where("requestedBy", "==", user.uid),
-        where("status", "==", "pending")
+        where("requestedBy", "==", user.uid)
       );
 
       const reqSnap = await getDocs(existingReq);
-      if (!reqSnap.empty) return alert("Already requested");
+      if (!reqSnap.empty) {
+        return alert("Request already sent");
+      }
 
+      // ✅ CREATE REQUEST
       await addDoc(collection(db, "rideRequests"), {
         rideId: ride.id,
         rideOwner: ride.createdBy,
         requestedBy: user.uid,
         requestedByEmail: user.email,
+        requestedByPhone: profile.phone || "",
         status: "pending",
+        showContact: false,
         createdAt: Timestamp.now()
       });
 
@@ -82,7 +115,7 @@ function SearchRide() {
 
     } catch (err) {
       console.error(err);
-      alert("Error");
+      alert("Error sending request");
     }
   };
 
@@ -123,14 +156,14 @@ function SearchRide() {
           onClick={searchRides}
           className="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded-lg font-semibold"
         >
-          Search Ride 🚀
+          {loading ? "Searching..." : "Search Ride 🚀"}
         </button>
       </div>
 
       {/* 🚗 RESULTS */}
       <div className="mt-6 space-y-4">
 
-        {rides.length === 0 && (
+        {!loading && rides.length === 0 && (
           <p className="text-center text-gray-400">
             No rides found
           </p>
@@ -162,7 +195,7 @@ function SearchRide() {
               <button
                 disabled={isOwner || isJoined || isFull}
                 onClick={() => requestToJoin(ride)}
-                className={`w-full mt-2 p-2 rounded-lg font-medium ${
+                className={`w-full mt-2 p-2 rounded-lg font-medium transition ${
                   isFull
                     ? "bg-gray-500"
                     : isJoined
