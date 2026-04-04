@@ -99,21 +99,25 @@ function CreateRide() {
         </div>
 
         {/* DATE + TIME */}
-        <div className="4">
-          <input
-            type="date"
-            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row gap-4">
 
-          <input
-            type="time"
-            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
-            value={time}
-            onChange={e => setTime(e.target.value)}
-          />
-        </div>
+  <input
+    type="date"
+    value={date}
+    onChange={(e) => setDate(e.target.value)}
+    className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+  />
+
+  <input
+    type="time"
+    value={time}
+    onChange={(e) => setTime(e.target.value)}
+    className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+  />
+
+</div>
+
+        
 
         {/* SEATS */}
         <input

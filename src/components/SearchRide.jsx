@@ -57,22 +57,18 @@ function SearchRide() {
     if (!user) return alert("Login first");
 
     try {
-      // ❌ Own ride
       if (ride.createdBy === user.uid) {
         return alert("This is your ride");
       }
 
-      // ❌ Full ride
       if (ride.seats <= 0) {
         return alert("Ride is full");
       }
 
-      // ❌ Already joined
       if (ride.participants?.includes(user.uid)) {
         return alert("Already joined this ride");
       }
 
-      // 🔥 Get profile
       const profileRef = doc(db, "profiles", user.uid);
       const profileSnap = await getDoc(profileRef);
 
@@ -82,12 +78,10 @@ function SearchRide() {
 
       const profile = profileSnap.data();
 
-      // ❌ Already in another ride
       if (profile.currentRideId) {
         return alert("You are already in a ride");
       }
 
-      // ❌ Already requested (any status)
       const existingReq = query(
         collection(db, "rideRequests"),
         where("rideId", "==", ride.id),
@@ -99,7 +93,6 @@ function SearchRide() {
         return alert("Request already sent");
       }
 
-      // ✅ CREATE REQUEST
       await addDoc(collection(db, "rideRequests"), {
         rideId: ride.id,
         rideOwner: ride.createdBy,
@@ -120,7 +113,7 @@ function SearchRide() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto mt-10">
+    <div className="max-w-3xl mx-auto mt-10 px-2">
 
       <h2 className="text-2xl font-bold mb-6 text-center">
         🔍 Find a Ride
@@ -129,29 +122,32 @@ function SearchRide() {
       {/* 🔎 SEARCH BOX */}
       <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
 
+        {/* FROM + TO */}
         <div className="flex flex-col sm:flex-row gap-3">
           <input
-            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="From"
             value={from}
             onChange={e => setFrom(e.target.value)}
           />
 
           <input
-            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="To"
             value={to}
             onChange={e => setTo(e.target.value)}
           />
         </div>
 
+        {/* DATE */}
         <input
           type="date"
-          className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
           value={date}
-          onChange={e => setDate(e.target.value)}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
         />
 
+        {/* BUTTON */}
         <button
           onClick={searchRides}
           className="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded-lg font-semibold"
