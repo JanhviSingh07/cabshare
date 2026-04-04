@@ -82,7 +82,7 @@ function CreateRide() {
       <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
 
         {/* FROM + TO */}
-        <div className="flex gap-4">
+        <div className="4">
           <input
             className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="From"
@@ -99,7 +99,7 @@ function CreateRide() {
         </div>
 
         {/* DATE + TIME */}
-        <div className="flex gap-4">
+        <div className="4">
           <input
             type="date"
             className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"

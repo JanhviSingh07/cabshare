@@ -129,7 +129,7 @@ function SearchRide() {
       {/* 🔎 SEARCH BOX */}
       <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="From"

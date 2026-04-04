@@ -171,7 +171,7 @@ function RideRequests() {
 
               {/* 🔥 BUTTONS ONLY IF PENDING */}
               {req.status === "pending" && (
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => acceptRequest(req)}
                     className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg font-medium transition"

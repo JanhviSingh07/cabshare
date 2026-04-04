@@ -1,40 +1,48 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  onSnapshot
-} from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 function RideStatus() {
   const [ride, setRide] = useState(null);
   const [rideId, setRideId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // 🔍 FETCH CURRENT RIDE
   useEffect(() => {
     const fetchRide = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
 
-      const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-      if (!profileSnap.exists()) return;
+        const profileSnap = await getDoc(doc(db, "profiles", user.uid));
+        if (!profileSnap.exists()) {
+          setLoading(false);
+          return;
+        }
 
-      const profile = profileSnap.data();
+        const profile = profileSnap.data();
 
-      if (!profile.currentRideId) return;
+        if (!profile.currentRideId) {
+          setLoading(false);
+          return;
+        }
 
-      setRideId(profile.currentRideId);
+        setRideId(profile.currentRideId);
 
-      const rideSnap = await getDoc(
-        doc(db, "rides", profile.currentRideId)
-      );
+        const rideSnap = await getDoc(
+          doc(db, "rides", profile.currentRideId)
+        );
 
-      if (rideSnap.exists()) {
-        setRide({ id: rideSnap.id, ...rideSnap.data() });
+        if (rideSnap.exists()) {
+          setRide({ id: rideSnap.id, ...rideSnap.data() });
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert("Error loading ride");
       }
+
+      setLoading(false);
     };
 
     fetchRide();
@@ -52,7 +60,6 @@ function RideStatus() {
 
       const rideData = rideSnap.data();
 
-      // remove user from participants
       const updatedParticipants = rideData.participants.filter(
         (uid) => uid !== user.uid
       );
@@ -62,7 +69,6 @@ function RideStatus() {
         seats: rideData.seats + 1
       });
 
-      // clear user profile
       await updateDoc(doc(db, "profiles", user.uid), {
         currentRideId: null
       });
@@ -86,14 +92,13 @@ function RideStatus() {
 
       const rideData = rideSnap.data();
 
-      // clear all participants
+      // clear all users
       for (let uid of rideData.participants) {
         await updateDoc(doc(db, "profiles", uid), {
           currentRideId: null
         });
       }
 
-      // mark ride as cancelled
       await updateDoc(rideRef, {
         cancelled: true
       });
@@ -107,10 +112,20 @@ function RideStatus() {
     }
   };
 
+  // 🔄 LOADING STATE
+  if (loading) {
+    return (
+      <p className="text-center mt-10 text-gray-400">
+        Loading ride...
+      </p>
+    );
+  }
+
+  // ❌ NO RIDE
   if (!ride) {
     return (
       <p className="text-center mt-10 text-gray-400">
-        No active ride
+        No active ride 🚫
       </p>
     );
   }
@@ -119,22 +134,34 @@ function RideStatus() {
   const isOwner = ride.createdBy === user.uid;
 
   return (
-    <div className="max-w-3xl mx-auto mt-10">
+    <div className="max-w-3xl mx-auto mt-10 px-2 sm:px-0">
 
-      <div className="bg-slate-800 p-6 rounded-xl shadow-lg">
+      <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-3">
 
-        <h2 className="text-xl font-bold mb-3">
+        <h2 className="text-xl font-bold">
           🚗 Your Ride
         </h2>
 
-        <p>{ride.from} → {ride.to}</p>
-        <p>📅 {ride.date} | ⏰ {ride.time}</p>
-        <p>💺 Seats left: {ride.seats}</p>
+        <p className="text-lg">
+          {ride.from} → {ride.to}
+        </p>
+
+        <p className="text-gray-400">
+          📅 {ride.date} | ⏰ {ride.time}
+        </p>
+
+        <p>
+          💺 Seats left: {ride.seats}
+        </p>
+
+        <p className="text-sm text-gray-400">
+          👥 Participants: {ride.participants?.length || 0}
+        </p>
 
         {/* 🔥 ACTION BUTTON */}
         <button
           onClick={isOwner ? cancelRide : leaveRide}
-          className={`mt-4 w-full p-2 rounded-lg font-medium ${
+          className={`mt-4 w-full p-3 rounded-lg font-medium transition ${
             isOwner
               ? "bg-red-500 hover:bg-red-600"
               : "bg-yellow-500 hover:bg-yellow-600"

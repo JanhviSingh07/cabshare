@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  arrayUnion, 
-  arrayRemove 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove
 } from "firebase/firestore";
 
 function RideOwnerDashboard() {
@@ -24,60 +24,117 @@ function RideOwnerDashboard() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const rides = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const rides = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data()
+      }));
       setMyRides(rides);
     });
 
     return () => unsub();
   }, []);
 
+  // ✅ ACCEPT REQUEST
   const acceptRequest = async (rideId, requesterId) => {
-    const rideRef = doc(db, "rides", rideId);
+    try {
+      const rideRef = doc(db, "rides", rideId);
 
-    await updateDoc(rideRef, {
-      pendingRequests: arrayRemove(requesterId),
-      participants: arrayUnion(requesterId)
-    });
+      await updateDoc(rideRef, {
+        pendingRequests: arrayRemove(requesterId),
+        participants: arrayUnion(requesterId)
+      });
 
-    alert("Request Accepted ✅");
+      alert("Request Accepted ✅");
+    } catch (err) {
+      console.error(err);
+      alert("Error accepting request");
+    }
   };
 
+  // ❌ REJECT REQUEST
   const rejectRequest = async (rideId, requesterId) => {
-    const rideRef = doc(db, "rides", rideId);
+    try {
+      const rideRef = doc(db, "rides", rideId);
 
-    await updateDoc(rideRef, {
-      pendingRequests: arrayRemove(requesterId)
-    });
+      await updateDoc(rideRef, {
+        pendingRequests: arrayRemove(requesterId)
+      });
 
-    alert("Request Rejected ❌");
+      alert("Request Rejected ❌");
+    } catch (err) {
+      console.error(err);
+      alert("Error rejecting request");
+    }
   };
 
   return (
-    <div style={{ padding: "30px" }}>
-      <h2>Your Created Rides</h2>
+    <div className="max-w-4xl mx-auto mt-10 px-2 sm:px-0">
 
-      {myRides.length === 0 && <p>You haven’t created any ride yet.</p>}
+      <h2 className="text-2xl font-bold text-center mb-6">
+        🚗 Your Created Rides
+      </h2>
 
-      {myRides.map(ride => (
-        <div key={ride.id} style={{ border: "1px solid gray", padding: 10, marginTop: 10 }}>
-          <h3>Ride: {ride.from} → {ride.to}</h3>
-          <p>Date: {ride.date} | Time: {ride.time}</p>
+      {myRides.length === 0 && (
+        <p className="text-center text-gray-400">
+          You haven’t created any ride yet.
+        </p>
+      )}
 
-          <h4>Join Requests</h4>
+      <div className="space-y-4">
+        {myRides.map((ride) => (
+          <div
+            key={ride.id}
+            className="bg-slate-800 p-5 rounded-xl shadow-md"
+          >
+            {/* RIDE INFO */}
+            <h3 className="text-lg font-semibold">
+              {ride.from} → {ride.to}
+            </h3>
 
-          {(!ride.pendingRequests || ride.pendingRequests.length === 0) && (
-            <p>No pending requests</p>
-          )}
+            <p className="text-sm text-gray-400">
+              📅 {ride.date} | ⏰ {ride.time}
+            </p>
 
-          {ride.pendingRequests?.map(uid => (
-            <div key={uid} style={{ marginTop: 5 }}>
-              <span>User: {uid}</span>
-              <button onClick={() => acceptRequest(ride.id, uid)}>Accept</button>
-              <button onClick={() => rejectRequest(ride.id, uid)}>Reject</button>
-            </div>
-          ))}
-        </div>
-      ))}
+            {/* REQUEST SECTION */}
+            <h4 className="mt-3 font-medium">Join Requests</h4>
+
+            {(!ride.pendingRequests ||
+              ride.pendingRequests.length === 0) && (
+              <p className="text-gray-400 text-sm">
+                No pending requests
+              </p>
+            )}
+
+            {ride.pendingRequests?.map((uid) => (
+              <div
+                key={uid}
+                className="mt-3 p-3 bg-slate-700 rounded-lg"
+              >
+                <p className="text-sm mb-2">
+                  👤 User: {uid}
+                </p>
+
+                {/* 🔥 RESPONSIVE BUTTONS */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => acceptRequest(ride.id, uid)}
+                    className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg font-medium transition"
+                  >
+                    ✅ Accept
+                  </button>
+
+                  <button
+                    onClick={() => rejectRequest(ride.id, uid)}
+                    className="flex-1 bg-red-500 hover:bg-red-600 p-2 rounded-lg font-medium transition"
+                  >
+                    ❌ Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
