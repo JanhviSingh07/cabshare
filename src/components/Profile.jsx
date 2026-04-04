@@ -42,6 +42,15 @@ function Profile() {
   const saveProfile = async () => {
     if (!user) return;
 
+    // 🔴 VALIDATION
+    if (!profile.name.trim()) {
+      return alert("Enter your name");
+    }
+
+    if (profile.phone.length !== 10) {
+      return alert("Phone number must be exactly 10 digits");
+    }
+
     try {
       const ref = doc(db, "profiles", user.uid);
 
@@ -63,75 +72,83 @@ function Profile() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 bg-slate-900/60 p-6 rounded-xl shadow-lg text-white">
+    <div className="max-w-2xl mx-auto mt-10 px-2 text-white">
 
-      <h2 className="text-2xl font-bold mb-6 text-center">
-        👤 My Profile
-      </h2>
+      <div className="bg-slate-900/60 p-6 rounded-xl shadow-lg">
 
-      <div className="space-y-4">
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          👤 My Profile
+        </h2>
 
-        {/* NAME */}
-        <input
-          placeholder="Name"
-          value={profile.name}
-          onChange={(e) =>
-            setProfile({ ...profile, name: e.target.value })
-          }
-          className="w-full p-3 rounded-lg bg-slate-800 outline-none"
-        />
+        <div className="space-y-4">
 
-        {/* PHONE */}
-        <input
-          placeholder="Phone"
-          value={profile.phone}
-          onChange={(e) =>
-            setProfile({ ...profile, phone: e.target.value })
-          }
-          className="w-full p-3 rounded-lg bg-slate-800 outline-none"
-        />
+          {/* NAME */}
+          <input
+            placeholder="Name"
+            value={profile.name}
+            onChange={(e) =>
+              setProfile({ ...profile, name: e.target.value })
+            }
+            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+          />
 
-        {/* GENDER */}
-        <select
-          value={profile.gender}
-          onChange={(e) =>
-            setProfile({ ...profile, gender: e.target.value })
-          }
-          className="w-full p-3 rounded-lg bg-slate-800 outline-none"
-        >
-          <option value="">Select Gender</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-        </select>
+          {/* PHONE */}
+          <input
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Phone (10 digits)"
+            value={profile.phone}
+            maxLength={10}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, "");
+              setProfile({ ...profile, phone: value });
+            }}
+            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+          />
 
-        {/* COLLEGE */}
-        <input
-          placeholder="College"
-          value={profile.college}
-          onChange={(e) =>
-            setProfile({ ...profile, college: e.target.value })
-          }
-          className="w-full p-3 rounded-lg bg-slate-800 outline-none"
-        />
+          {/* GENDER */}
+          <select
+            value={profile.gender}
+            onChange={(e) =>
+              setProfile({ ...profile, gender: e.target.value })
+            }
+            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+          >
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
 
-        {/* REG NO */}
-        <input
-          placeholder="Registration Number"
-          value={profile.regNo}
-          onChange={(e) =>
-            setProfile({ ...profile, regNo: e.target.value })
-          }
-          className="w-full p-3 rounded-lg bg-slate-800 outline-none"
-        />
+          {/* COLLEGE */}
+          <input
+            placeholder="College"
+            value={profile.college}
+            onChange={(e) =>
+              setProfile({ ...profile, college: e.target.value })
+            }
+            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+          />
 
-        {/* SAVE BUTTON */}
-        <button
-          onClick={saveProfile}
-          className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold transition"
-        >
-          Save Profile ✅
-        </button>
+          {/* REG NO */}
+          <input
+            placeholder="Registration Number"
+            value={profile.regNo}
+            onChange={(e) =>
+              setProfile({ ...profile, regNo: e.target.value })
+            }
+            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+          />
 
+          {/* SAVE BUTTON */}
+          <button
+            onClick={saveProfile}
+            className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold transition"
+          >
+            Save Profile ✅
+          </button>
+
+        </div>
       </div>
     </div>
   );
