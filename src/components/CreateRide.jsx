@@ -50,7 +50,7 @@ function CreateRide() {
         createdAt: Timestamp.now(),
       });
 
-      // 🔥 IMPORTANT: SET OWNER AS ACTIVE RIDER
+      // 🔥 mark user as active rider
       await updateDoc(profileRef, {
         currentRideId: rideRef.id
       });
@@ -73,7 +73,7 @@ function CreateRide() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-10">
+    <div className="max-w-2xl mx-auto mt-10 px-2">
 
       <h2 className="text-2xl font-bold mb-6 text-center">
         🚗 Create Ride
@@ -82,16 +82,16 @@ function CreateRide() {
       <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
 
         {/* FROM + TO */}
-        <div className="4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
-            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="From"
             value={from}
             onChange={e => setFrom(e.target.value)}
           />
 
           <input
-            className="flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
             placeholder="To"
             value={to}
             onChange={e => setTo(e.target.value)}
@@ -99,25 +99,21 @@ function CreateRide() {
         </div>
 
         {/* DATE + TIME */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+          />
 
-  <input
-    type="date"
-    value={date}
-    onChange={(e) => setDate(e.target.value)}
-    className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
-  />
-
-  <input
-    type="time"
-    value={time}
-    onChange={(e) => setTime(e.target.value)}
-    className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
-  />
-
-</div>
-
-        
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+          />
+        </div>
 
         {/* SEATS */}
         <input
