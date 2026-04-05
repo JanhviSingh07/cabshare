@@ -17,41 +17,44 @@ function RideRequests() {
   const [requesterNames, setRequesterNames] = useState({});
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+    // ✅ FIX 1: auth.onAuthStateChanged use karo, currentUser nahi
+    // currentUser kabhi kabhi null hota hai page load pe
+    const unsubAuth = auth.onAuthStateChanged((user) => {
+      if (!user) return;
 
-    // Listen to rides created by this user that have pending requests
-    const q = query(
-      collection(db, "rides"),
-      where("createdBy", "==", user.uid)
-    );
-
-    const unsub = onSnapshot(q, async (snap) => {
-      const rides = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data()
-      }));
-      setMyRides(rides);
-
-      // Fetch names for all pending requesters
-      const allUids = rides.flatMap(r => r.pendingRequests || []);
-      const uniqueUids = [...new Set(allUids)];
-
-      const nameMap = {};
-      await Promise.all(
-        uniqueUids.map(async (uid) => {
-          try {
-            const snap = await getDoc(doc(db, "profiles", uid));
-            nameMap[uid] = snap.exists() ? snap.data().name : uid;
-          } catch {
-            nameMap[uid] = uid;
-          }
-        })
+      const q = query(
+        collection(db, "rides"),
+        where("createdBy", "==", user.uid)
       );
-      setRequesterNames(nameMap);
+
+      const unsubSnap = onSnapshot(q, async (snap) => {
+        const rides = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data()
+        }));
+        setMyRides(rides);
+
+        const allUids = rides.flatMap(r => r.pendingRequests || []);
+        const uniqueUids = [...new Set(allUids)];
+
+        const nameMap = {};
+        await Promise.all(
+          uniqueUids.map(async (uid) => {
+            try {
+              const s = await getDoc(doc(db, "profiles", uid));
+              nameMap[uid] = s.exists() ? s.data().name : uid;
+            } catch {
+              nameMap[uid] = uid;
+            }
+          })
+        );
+        setRequesterNames(nameMap);
+      });
+
+      return () => unsubSnap();
     });
 
-    return () => unsub();
+    return () => unsubAuth();
   }, []);
 
   const acceptRequest = async (rideId, requesterId, ride) => {
@@ -59,7 +62,7 @@ function RideRequests() {
       await updateDoc(doc(db, "rides", rideId), {
         pendingRequests: arrayRemove(requesterId),
         participants: arrayUnion(requesterId),
-        seats: ride.seats - 1
+        seats: Number(ride.seats) - 1  // ✅ FIX 2: Number() wrap karo
       });
 
       await updateDoc(doc(db, "profiles", requesterId), {
