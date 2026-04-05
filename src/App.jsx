@@ -8,66 +8,72 @@ import RideRequests from "./components/RideRequests";
 import RideStatus from "./components/RideStatus";
 import Profile from "./components/Profile";
 import { useEffect, useState } from "react";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileComplete, setProfileComplete] = useState(false);
 
-  // 🔄 AUTH STATE LISTENER
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
+    const unsub = auth.onAuthStateChanged(async (u) => {
       setUser(u);
+
+      if (u) {
+        const snap = await getDoc(doc(db, "profiles", u.uid));
+
+        if (
+          snap.exists() &&
+          snap.data().name &&
+          snap.data().phone
+        ) {
+          setProfileComplete(true);
+        } else {
+          setProfileComplete(false);
+        }
+      }
+
       setLoading(false);
     });
+
     return () => unsub();
   }, []);
 
-  // 🔄 LOADING SCREEN
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white">
-        <p className="text-lg animate-pulse">Loading...</p>
-      </div>
-    );
+    return <p className="text-center mt-10">Loading...</p>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white px-4 sm:px-6 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-900 text-white px-4">
 
-      {/* 🔥 GLOBAL TOASTER */}
-      <Toaster position="top-center" />
+      <Toaster />
 
-      {/* 🔥 HEADER (ONLY ON LOGIN) */}
+      {/* HEADER */}
       {user && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-6">
-
-          {/* APP NAME */}
-          <h2 className="text-xl font-bold">🚖 CabShare</h2>
-
-          {/* USER INFO + LOGOUT */}
-          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-
-            <p className="text-sm text-gray-300 text-center sm:text-left">
-              {user.displayName || user.email}
-            </p>
-
-            <button
-              onClick={() => auth.signOut()}
-              className="bg-red-500 hover:bg-red-600 px-4 py-1 rounded-lg transition"
-            >
-              Logout
-            </button>
-
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <h2>🚖 CabShare</h2>
+          <button onClick={() => auth.signOut()}>Logout</button>
         </div>
       )}
 
-      {/* 🔀 ROUTES */}
       <Routes>
-        {!user ? (
+
+        {/* NOT LOGGED IN */}
+        {!user && (
           <Route path="*" element={<Auth />} />
-        ) : (
+        )}
+
+        {/* FORCE PROFILE */}
+        {user && !profileComplete && (
+          <>
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<Navigate to="/profile" />} />
+          </>
+        )}
+
+        {/* NORMAL FLOW */}
+        {user && profileComplete && (
           <>
             <Route path="/" element={<Navigate to="/home" />} />
             <Route path="/home" element={<Home />} />
@@ -78,6 +84,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
           </>
         )}
+
       </Routes>
     </div>
   );

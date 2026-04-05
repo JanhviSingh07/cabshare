@@ -16,6 +16,7 @@ function SearchRide() {
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
   const [rides, setRides] = useState([]);
+  const [ownerNames, setOwnerNames] = useState({}); // ✅ NEW
   const [loading, setLoading] = useState(false);
 
   // 🔍 SEARCH RIDES
@@ -43,6 +44,23 @@ function SearchRide() {
 
       setRides(results);
 
+      // ✅ FETCH OWNER NAMES FROM PROFILE
+      const names = {};
+      for (let ride of results) {
+        try {
+          const snap = await getDoc(doc(db, "profiles", ride.createdBy));
+          if (snap.exists()) {
+            names[ride.createdBy] = snap.data().name || "Unknown";
+          } else {
+            names[ride.createdBy] = "Unknown";
+          }
+        } catch {
+          names[ride.createdBy] = "Unknown";
+        }
+      }
+
+      setOwnerNames(names);
+
     } catch (err) {
       console.error(err);
       alert("Error fetching rides");
@@ -51,7 +69,7 @@ function SearchRide() {
     setLoading(false);
   };
 
-  // 📩 REQUEST TO JOIN (FIXED)
+  // 📩 REQUEST TO JOIN
   const requestToJoin = async (ride) => {
     const user = auth.currentUser;
     if (!user) return alert("Login first");
@@ -82,7 +100,6 @@ function SearchRide() {
         return alert("You are already in a ride");
       }
 
-      // ✅ STORE REQUEST IN RIDE (MAIN FIX)
       const rideRef = doc(db, "rides", ride.id);
 
       await updateDoc(rideRef, {
@@ -107,7 +124,6 @@ function SearchRide() {
       {/* 🔎 SEARCH BOX */}
       <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
 
-        {/* FROM + TO */}
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
@@ -124,7 +140,6 @@ function SearchRide() {
           />
         </div>
 
-        {/* DATE */}
         <input
           type="date"
           value={date}
@@ -132,7 +147,6 @@ function SearchRide() {
           className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
         />
 
-        {/* BUTTON */}
         <button
           onClick={searchRides}
           className="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded-lg font-semibold"
@@ -169,9 +183,9 @@ function SearchRide() {
                 📅 {ride.date} | ⏰ {ride.time}
               </p>
 
-              {/* ✅ SHOW NAME INSTEAD OF EMAIL */}
+              {/* ✅ REAL OWNER NAME */}
               <p>
-                👤 Owner: {ride.createdByEmail?.split("@")[0]}
+                👤 Owner: {ownerNames[ride.createdBy] || "Loading..."}
               </p>
 
               <p>💺 Seats left: {ride.seats}</p>

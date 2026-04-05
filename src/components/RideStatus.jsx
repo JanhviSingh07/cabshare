@@ -5,9 +5,9 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 function RideStatus() {
   const [ride, setRide] = useState(null);
   const [rideId, setRideId] = useState(null);
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔍 FETCH CURRENT RIDE
   useEffect(() => {
     const fetchRide = async () => {
       try {
@@ -15,17 +15,10 @@ function RideStatus() {
         if (!user) return;
 
         const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-        if (!profileSnap.exists()) {
-          setLoading(false);
-          return;
-        }
+        if (!profileSnap.exists()) return setLoading(false);
 
         const profile = profileSnap.data();
-
-        if (!profile.currentRideId) {
-          setLoading(false);
-          return;
-        }
+        if (!profile.currentRideId) return setLoading(false);
 
         setRideId(profile.currentRideId);
 
@@ -34,7 +27,17 @@ function RideStatus() {
         );
 
         if (rideSnap.exists()) {
-          setRide({ id: rideSnap.id, ...rideSnap.data() });
+          const rideData = { id: rideSnap.id, ...rideSnap.data() };
+          setRide(rideData);
+
+          const users = await Promise.all(
+            rideData.participants.map(async (uid) => {
+              const snap = await getDoc(doc(db, "profiles", uid));
+              return snap.exists() ? snap.data() : null;
+            })
+          );
+
+          setContacts(users.filter(Boolean));
         }
 
       } catch (err) {
@@ -48,127 +51,64 @@ function RideStatus() {
     fetchRide();
   }, []);
 
-  // 🚪 LEAVE RIDE
-  const leaveRide = async () => {
-    const user = auth.currentUser;
-
-    try {
-      const rideRef = doc(db, "rides", rideId);
-      const rideSnap = await getDoc(rideRef);
-
-      if (!rideSnap.exists()) return;
-
-      const rideData = rideSnap.data();
-
-      const updatedParticipants = rideData.participants.filter(
-        (uid) => uid !== user.uid
-      );
-
-      await updateDoc(rideRef, {
-        participants: updatedParticipants,
-        seats: rideData.seats + 1
-      });
-
-      await updateDoc(doc(db, "profiles", user.uid), {
-        currentRideId: null
-      });
-
-      alert("Left ride ❌");
-      window.location.reload();
-
-    } catch (err) {
-      console.error(err);
-      alert("Error leaving ride");
-    }
-  };
-
-  // ❌ CANCEL RIDE (OWNER)
-  const cancelRide = async () => {
-    try {
-      const rideRef = doc(db, "rides", rideId);
-      const rideSnap = await getDoc(rideRef);
-
-      if (!rideSnap.exists()) return;
-
-      const rideData = rideSnap.data();
-
-      // clear all users
-      for (let uid of rideData.participants) {
-        await updateDoc(doc(db, "profiles", uid), {
-          currentRideId: null
-        });
-      }
-
-      await updateDoc(rideRef, {
-        cancelled: true
-      });
-
-      alert("Ride cancelled ❌");
-      window.location.reload();
-
-    } catch (err) {
-      console.error(err);
-      alert("Error cancelling ride");
-    }
-  };
-
-  // 🔄 LOADING STATE
-  if (loading) {
-    return (
-      <p className="text-center mt-10 text-gray-400">
-        Loading ride...
-      </p>
-    );
-  }
-
-  // ❌ NO RIDE
-  if (!ride) {
-    return (
-      <p className="text-center mt-10 text-gray-400">
-        No active ride 🚫
-      </p>
-    );
-  }
-
   const user = auth.currentUser;
-  const isOwner = ride.createdBy === user.uid;
+  const isOwner = ride?.createdBy === user?.uid;
+
+  if (loading) {
+    return <p className="text-center mt-10 text-gray-400">Loading...</p>;
+  }
+
+  if (!ride) {
+    return <p className="text-center mt-10 text-gray-400">No active ride 🚫</p>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 px-2 sm:px-0">
+    <div className="max-w-3xl mx-auto mt-10 px-2">
 
-      <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-3">
+      <div className="bg-slate-800 p-6 rounded-xl space-y-3">
 
-        <h2 className="text-xl font-bold">
-          🚗 Your Ride
-        </h2>
+        <h2 className="text-xl font-bold">🚗 Your Ride</h2>
 
-        <p className="text-lg">
-          {ride.from} → {ride.to}
-        </p>
+        <p>{ride.from} → {ride.to}</p>
+        <p className="text-gray-400">📅 {ride.date} | ⏰ {ride.time}</p>
 
-        <p className="text-gray-400">
-          📅 {ride.date} | ⏰ {ride.time}
-        </p>
+        {/* 🔒 SHOW ONLY AFTER ACCEPT */}
+        {ride.participants.includes(user.uid) ? (
 
-        <p>
-          💺 Seats left: {ride.seats}
-        </p>
+          <div className="mt-4 bg-slate-700 p-4 rounded-lg">
+            <h3 className="font-semibold mb-3">📞 Ride Members</h3>
 
-        <p className="text-sm text-gray-400">
-          👥 Participants: {ride.participants?.length || 0}
-        </p>
+            {contacts
+              .filter((u) => u.uid !== user.uid) // hide yourself
+              .map((u, i) => {
+                const phone = u.phone || "";
+                const formatted = phone.startsWith("91") ? phone : `91${phone}`;
 
-        {/* 🔥 ACTION BUTTON */}
-        <button
-          onClick={isOwner ? cancelRide : leaveRide}
-          className={`mt-4 w-full p-3 rounded-lg font-medium transition ${
-            isOwner
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-yellow-500 hover:bg-yellow-600"
-          }`}
-        >
-          {isOwner ? "Cancel Ride ❌" : "Leave Ride 🚪"}
-        </button>
+                return (
+                  <div key={i} className="bg-slate-600 p-3 rounded-lg mb-2">
+
+                    👤 {u.name} <br />
+                    📱 {phone}
+
+                    <a
+                      href={`https://wa.me/${formatted}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block mt-2 bg-green-500 text-center p-1 rounded"
+                    >
+                      WhatsApp 📲
+                    </a>
+
+                  </div>
+                );
+              })}
+          </div>
+
+        ) : (
+          <p className="text-gray-400 text-center mt-3">
+            Contact details visible after acceptance ⏳
+          </p>
+        )}
 
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
 function Profile() {
   const user = auth.currentUser;
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState({
     name: "",
@@ -14,8 +16,8 @@ function Profile() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // 🔥 FETCH PROFILE
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
@@ -26,6 +28,11 @@ function Profile() {
 
         if (snap.exists()) {
           setProfile(snap.data());
+        } else {
+          setProfile((prev) => ({
+            ...prev,
+            name: user.displayName || "",
+          }));
         }
       } catch (err) {
         console.error(err);
@@ -38,11 +45,9 @@ function Profile() {
     fetchProfile();
   }, [user]);
 
-  // 💾 SAVE PROFILE
   const saveProfile = async () => {
     if (!user) return;
 
-    // 🔴 VALIDATION
     if (!profile.name.trim()) {
       return alert("Enter your name");
     }
@@ -51,16 +56,27 @@ function Profile() {
       return alert("Phone number must be exactly 10 digits");
     }
 
+    setSaving(true);
+
     try {
       const ref = doc(db, "profiles", user.uid);
 
-      await setDoc(ref, profile, { merge: true });
+      await setDoc(ref, {
+        ...profile,
+        name: profile.name.trim(),
+      }, { merge: true });
 
       alert("Profile saved ✅");
+
+      // ✅ AUTO REDIRECT
+      navigate("/home");
+
     } catch (err) {
       console.error(err);
       alert("Error saving profile");
     }
+
+    setSaving(false);
   };
 
   if (loading) {
@@ -77,26 +93,23 @@ function Profile() {
       <div className="bg-slate-900/60 p-6 rounded-xl shadow-lg">
 
         <h2 className="text-2xl font-bold mb-6 text-center">
-          👤 My Profile
+          👤 Complete Your Profile
         </h2>
 
         <div className="space-y-4">
 
-          {/* NAME */}
           <input
             placeholder="Name"
             value={profile.name}
             onChange={(e) =>
               setProfile({ ...profile, name: e.target.value })
             }
-            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+            className="w-full p-3 rounded-lg bg-slate-800"
           />
 
-          {/* PHONE */}
           <input
             type="tel"
             inputMode="numeric"
-            pattern="[0-9]*"
             placeholder="Phone (10 digits)"
             value={profile.phone}
             maxLength={10}
@@ -104,48 +117,49 @@ function Profile() {
               const value = e.target.value.replace(/\D/g, "");
               setProfile({ ...profile, phone: value });
             }}
-            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+            className="w-full p-3 rounded-lg bg-slate-800"
           />
 
-          {/* GENDER */}
           <select
             value={profile.gender}
             onChange={(e) =>
               setProfile({ ...profile, gender: e.target.value })
             }
-            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+            className="w-full p-3 rounded-lg bg-slate-800"
           >
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
 
-          {/* COLLEGE */}
           <input
             placeholder="College"
             value={profile.college}
             onChange={(e) =>
               setProfile({ ...profile, college: e.target.value })
             }
-            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+            className="w-full p-3 rounded-lg bg-slate-800"
           />
 
-          {/* REG NO */}
           <input
             placeholder="Registration Number"
             value={profile.regNo}
             onChange={(e) =>
               setProfile({ ...profile, regNo: e.target.value })
             }
-            className="w-full p-3 rounded-lg bg-slate-800 outline-none"
+            className="w-full p-3 rounded-lg bg-slate-800"
           />
 
-          {/* SAVE BUTTON */}
           <button
             onClick={saveProfile}
-            className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold transition"
+            disabled={saving}
+            className={`w-full p-3 rounded-lg font-semibold ${
+              saving
+                ? "bg-gray-500"
+                : "bg-green-500 hover:bg-green-600"
+            }`}
           >
-            Save Profile ✅
+            {saving ? "Saving..." : "Save Profile ✅"}
           </button>
 
         </div>
