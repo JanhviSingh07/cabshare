@@ -28,7 +28,6 @@ function CreateRide() {
     setLoading(true);
 
     try {
-      // 🚫 prevent multiple rides
       const profileRef = doc(db, "profiles", user.uid);
       const profileSnap = await getDoc(profileRef);
 
@@ -37,16 +36,24 @@ function CreateRide() {
         return alert("You are already in a ride");
       }
 
+      // ✅ FIX 1: lowercase store (VERY IMPORTANT)
+      const cleanFrom = from.trim().toLowerCase();
+      const cleanTo = to.trim().toLowerCase();
+
+      // ✅ FIX 2: date already correct (YYYY-MM-DD from input)
+      const cleanDate = date;
+
       // 🚗 CREATE RIDE
       const rideRef = await addDoc(collection(db, "rides"), {
-        from,
-        to,
-        date,
+        from: cleanFrom,
+        to: cleanTo,
+        date: cleanDate,
         time,
         seats,
         createdBy: user.uid,
         createdByEmail: user.email,
         participants: [user.uid],
+        pendingRequests: [], // ✅ IMPORTANT (avoid undefined bugs)
         createdAt: Timestamp.now(),
       });
 
@@ -57,7 +64,7 @@ function CreateRide() {
 
       alert("Ride created 🚀");
 
-      // reset form
+      // reset
       setFrom("");
       setTo("");
       setDate("");
@@ -84,14 +91,14 @@ function CreateRide() {
         {/* FROM + TO */}
         <div className="flex flex-col sm:flex-row gap-3">
           <input
-            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white"
             placeholder="From"
             value={from}
             onChange={e => setFrom(e.target.value)}
           />
 
           <input
-            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white"
             placeholder="To"
             value={to}
             onChange={e => setTo(e.target.value)}
@@ -104,14 +111,14 @@ function CreateRide() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white"
           />
 
           <input
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white outline-none"
+            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white"
           />
         </div>
 
@@ -119,17 +126,16 @@ function CreateRide() {
         <input
           type="number"
           min="1"
-          className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
+          className="w-full p-3 rounded-lg bg-slate-700 text-white"
           value={seats}
           onChange={e => setSeats(Number(e.target.value))}
-          placeholder="Seats"
         />
 
         {/* BUTTON */}
         <button
           onClick={createRide}
           disabled={loading}
-          className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold transition"
+          className="w-full bg-green-500 hover:bg-green-600 p-3 rounded-lg font-semibold"
         >
           {loading ? "Creating..." : "Create Ride 🚀"}
         </button>

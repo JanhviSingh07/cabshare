@@ -7,186 +7,133 @@ import {
   onSnapshot,
   doc,
   updateDoc,
-  getDoc,
-  setDoc,
-  arrayUnion
+  arrayUnion,
+  arrayRemove,
+  getDoc
 } from "firebase/firestore";
 
 function RideRequests() {
-  const [requests, setRequests] = useState([]);
-  const [profiles, setProfiles] = useState({});
+  const [myRides, setMyRides] = useState([]);
+  const [requesterNames, setRequesterNames] = useState({});
 
-  // 🔥 FETCH ALL REQUESTS (pending + accepted)
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
 
+    // Listen to rides created by this user that have pending requests
     const q = query(
-      collection(db, "rideRequests"),
-      where("rideOwner", "==", user.uid)
+      collection(db, "rides"),
+      where("createdBy", "==", user.uid)
     );
 
     const unsub = onSnapshot(q, async (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setRequests(data);
+      const rides = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data()
+      }));
+      setMyRides(rides);
 
-      // 🔥 FETCH PROFILE ONLY FOR ACCEPTED USERS
-      const profileData = {};
+      // Fetch names for all pending requesters
+      const allUids = rides.flatMap(r => r.pendingRequests || []);
+      const uniqueUids = [...new Set(allUids)];
 
-      for (let req of data) {
-        if (req.status === "accepted") {
-          const ref = doc(db, "profiles", req.requestedBy);
-          const snap = await getDoc(ref);
-
-          if (snap.exists()) {
-            profileData[req.requestedBy] = snap.data();
+      const nameMap = {};
+      await Promise.all(
+        uniqueUids.map(async (uid) => {
+          try {
+            const snap = await getDoc(doc(db, "profiles", uid));
+            nameMap[uid] = snap.exists() ? snap.data().name : uid;
+          } catch {
+            nameMap[uid] = uid;
           }
-        }
-      }
-
-      setProfiles(profileData);
+        })
+      );
+      setRequesterNames(nameMap);
     });
 
     return () => unsub();
   }, []);
 
-  // ✅ ACCEPT
-  const acceptRequest = async (req) => {
+  const acceptRequest = async (rideId, requesterId, ride) => {
     try {
-      const rideRef = doc(db, "rides", req.rideId);
-      const requestRef = doc(db, "rideRequests", req.id);
-      const profileRef = doc(db, "profiles", req.requestedBy);
-
-      const rideSnap = await getDoc(rideRef);
-      if (!rideSnap.exists()) return alert("Ride not found");
-
-      const ride = rideSnap.data();
-
-      if (ride.seats <= 0) {
-        await updateDoc(requestRef, { status: "rejected" });
-        return alert("Ride full");
-      }
-
-      // update ride
-      await updateDoc(rideRef, {
-        seats: ride.seats - 1,
-        participants: arrayUnion(req.requestedBy)
+      await updateDoc(doc(db, "rides", rideId), {
+        pendingRequests: arrayRemove(requesterId),
+        participants: arrayUnion(requesterId),
+        seats: ride.seats - 1
       });
 
-      // update profile
-      const profileSnap = await getDoc(profileRef);
-
-      if (!profileSnap.exists()) {
-        await setDoc(profileRef, { currentRideId: req.rideId });
-      } else {
-        await updateDoc(profileRef, { currentRideId: req.rideId });
-      }
-
-      // update request
-      await updateDoc(requestRef, {
-        status: "accepted",
-        showContact: true
+      await updateDoc(doc(db, "profiles", requesterId), {
+        currentRideId: rideId
       });
 
-      alert("Accepted ✅");
-
+      alert("Request Accepted ✅");
     } catch (err) {
       console.error(err);
       alert("Error accepting request");
     }
   };
 
-  // ❌ REJECT
-  const rejectRequest = async (id) => {
+  const rejectRequest = async (rideId, requesterId) => {
     try {
-      await updateDoc(doc(db, "rideRequests", id), {
-        status: "rejected"
+      await updateDoc(doc(db, "rides", rideId), {
+        pendingRequests: arrayRemove(requesterId)
       });
+      alert("Request Rejected ❌");
     } catch (err) {
       console.error(err);
       alert("Error rejecting request");
     }
   };
 
-  return (
-    <div className="max-w-3xl mx-auto mt-10">
+  const totalPending = myRides.reduce(
+    (acc, r) => acc + (r.pendingRequests?.length || 0), 0
+  );
 
+  return (
+    <div className="max-w-4xl mx-auto mt-10 px-2">
       <h2 className="text-2xl font-bold text-center mb-6">
         📩 Ride Requests
       </h2>
 
-      {requests.length === 0 && (
-        <p className="text-center text-gray-400">
-          No requests yet
-        </p>
+      {totalPending === 0 && (
+        <p className="text-center text-gray-400">No requests yet</p>
       )}
 
       <div className="space-y-4">
-        {requests.map(req => {
-          const profile = profiles[req.requestedBy];
+        {myRides.map((ride) => {
+          const pending = ride.pendingRequests || [];
+          if (pending.length === 0) return null;
 
           return (
-            <div
-              key={req.id}
-              className="bg-slate-800 p-5 rounded-xl shadow-md"
-            >
-              {/* USER INFO */}
-              <div className="flex justify-between items-center mb-3">
-                <div>
-                  <p className="font-semibold">
-                    {req.requestedByEmail}
+            <div key={ride.id} className="bg-slate-800 p-5 rounded-xl">
+              <h3 className="text-lg font-semibold">
+                {ride.from} → {ride.to}
+              </h3>
+              <p className="text-sm text-gray-400 mb-3">
+                📅 {ride.date} | ⏰ {ride.time}
+              </p>
+
+              {pending.map((uid) => (
+                <div key={uid} className="mt-2 p-3 bg-slate-700 rounded-lg">
+                  <p className="text-sm mb-2">
+                    👤 {requesterNames[uid] || "Loading..."}
                   </p>
-
-                  <p className="text-sm text-gray-400">
-                    Wants to join your ride
-                  </p>
-
-                  {/* 🔥 CONTACT ONLY AFTER ACCEPT */}
-                  {req.status === "accepted" && profile?.phone && (
-                    <p className="text-green-400 text-sm">
-                      📞 {profile.phone}
-                    </p>
-                  )}
-
-                  {req.status === "accepted" && profile?.college && (
-                    <p className="text-xs text-gray-500">
-                      🎓 {profile.college}
-                    </p>
-                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => acceptRequest(ride.id, uid, ride)}
+                      className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg"
+                    >
+                      ✅ Accept
+                    </button>
+                    <button
+                      onClick={() => rejectRequest(ride.id, uid)}
+                      className="flex-1 bg-red-500 hover:bg-red-600 p-2 rounded-lg"
+                    >
+                      ❌ Reject
+                    </button>
+                  </div>
                 </div>
-
-                {/* 🔥 STATUS BADGE */}
-                <span
-                  className={`text-sm ${
-                    req.status === "pending"
-                      ? "text-yellow-400"
-                      : req.status === "accepted"
-                      ? "text-green-400"
-                      : "text-red-400"
-                  }`}
-                >
-                  {req.status.toUpperCase()}
-                </span>
-              </div>
-
-              {/* 🔥 BUTTONS ONLY IF PENDING */}
-              {req.status === "pending" && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => acceptRequest(req)}
-                    className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg font-medium transition"
-                  >
-                    ✅ Accept
-                  </button>
-
-                  <button
-                    onClick={() => rejectRequest(req.id)}
-                    className="flex-1 bg-red-500 hover:bg-red-600 p-2 rounded-lg font-medium transition"
-                  >
-                    ❌ Reject
-                  </button>
-                </div>
-              )}
+              ))}
             </div>
           );
         })}
