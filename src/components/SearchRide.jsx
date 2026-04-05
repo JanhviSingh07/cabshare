@@ -5,10 +5,10 @@ import {
   query,
   where,
   getDocs,
-  addDoc,
-  Timestamp,
   doc,
-  getDoc
+  getDoc,
+  updateDoc,
+  arrayUnion
 } from "firebase/firestore";
 
 function SearchRide() {
@@ -29,8 +29,8 @@ function SearchRide() {
     try {
       const q = query(
         collection(db, "rides"),
-        where("from", "==", from),
-        where("to", "==", to),
+        where("from", "==", from.toLowerCase()),
+        where("to", "==", to.toLowerCase()),
         where("date", "==", date)
       );
 
@@ -51,7 +51,7 @@ function SearchRide() {
     setLoading(false);
   };
 
-  // 📩 REQUEST TO JOIN
+  // 📩 REQUEST TO JOIN (FIXED)
   const requestToJoin = async (ride) => {
     const user = auth.currentUser;
     if (!user) return alert("Login first");
@@ -82,26 +82,11 @@ function SearchRide() {
         return alert("You are already in a ride");
       }
 
-      const existingReq = query(
-        collection(db, "rideRequests"),
-        where("rideId", "==", ride.id),
-        where("requestedBy", "==", user.uid)
-      );
+      // ✅ STORE REQUEST IN RIDE (MAIN FIX)
+      const rideRef = doc(db, "rides", ride.id);
 
-      const reqSnap = await getDocs(existingReq);
-      if (!reqSnap.empty) {
-        return alert("Request already sent");
-      }
-
-      await addDoc(collection(db, "rideRequests"), {
-        rideId: ride.id,
-        rideOwner: ride.createdBy,
-        requestedBy: user.uid,
-        requestedByEmail: user.email,
-        requestedByPhone: profile.phone || "",
-        status: "pending",
-        showContact: false,
-        createdAt: Timestamp.now()
+      await updateDoc(rideRef, {
+        pendingRequests: arrayUnion(user.uid)
       });
 
       alert("Request sent 🚀");
@@ -184,7 +169,11 @@ function SearchRide() {
                 📅 {ride.date} | ⏰ {ride.time}
               </p>
 
-              <p>👤 Owner: {ride.createdByEmail}</p>
+              {/* ✅ SHOW NAME INSTEAD OF EMAIL */}
+              <p>
+                👤 Owner: {ride.createdByEmail?.split("@")[0]}
+              </p>
+
               <p>💺 Seats left: {ride.seats}</p>
               <p>👥 Participants: {ride.participants?.length || 0}</p>
 
