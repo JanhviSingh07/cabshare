@@ -7,43 +7,60 @@ function RideStatus() {
   const [contacts, setContacts] = useState([]);
   const [rideId, setRideId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUid, setCurrentUid] = useState(null);
 
   useEffect(() => {
-    const unsubAuth = auth.onAuthStateChanged((user) => {
-      if (!user) { setLoading(false); return; }
+    let unsubRide = null;
 
-      const unsubProfile = onSnapshot(doc(db, "profiles", user.uid), async (profileSnap) => {
-        if (!profileSnap.exists()) { setLoading(false); return; }
+    const unsubAuth = auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-        const currentRideId = profileSnap.data().currentRideId;
-        if (!currentRideId) { setLoading(false); return; }
+      setCurrentUid(user.uid);
 
-        setRideId(currentRideId);
+      // Step 1: get profile once
+      const profileSnap = await getDoc(doc(db, "profiles", user.uid));
+      if (!profileSnap.exists()) {
+        setLoading(false);
+        return;
+      }
 
-        const unsubRide = onSnapshot(doc(db, "rides", currentRideId), async (rideSnap) => {
-          if (!rideSnap.exists()) { setLoading(false); return; }
+      const currentRideId = profileSnap.data().currentRideId;
+      if (!currentRideId) {
+        setLoading(false);
+        return;
+      }
 
-          const rideData = { id: rideSnap.id, ...rideSnap.data() };
-          setRide(rideData);
+      setRideId(currentRideId);
 
-          const users = await Promise.all(
-            rideData.participants.map(async (uid) => {
-              const snap = await getDoc(doc(db, "profiles", uid));
-              return snap.exists() ? { uid, ...snap.data() } : null;
-            })
-          );
-
-          setContacts(users.filter(Boolean));
+      // Step 2: listen to ride in realtime
+      unsubRide = onSnapshot(doc(db, "rides", currentRideId), async (rideSnap) => {
+        if (!rideSnap.exists()) {
           setLoading(false);
-        });
+          return;
+        }
 
-        return () => unsubRide();
+        const rideData = { id: rideSnap.id, ...rideSnap.data() };
+        setRide(rideData);
+
+        const users = await Promise.all(
+          rideData.participants.map(async (uid) => {
+            const snap = await getDoc(doc(db, "profiles", uid));
+            return snap.exists() ? { uid, ...snap.data() } : null;
+          })
+        );
+
+        setContacts(users.filter(Boolean));
+        setLoading(false);
       });
-
-      return () => unsubProfile();
     });
 
-    return () => unsubAuth();
+    return () => {
+      unsubAuth();
+      if (unsubRide) unsubRide();
+    };
   }, []);
 
   const leaveRide = async () => {
@@ -75,12 +92,12 @@ function RideStatus() {
         <div className="mt-4 bg-slate-700 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-white">📞 Ride Members</h3>
 
-          {contacts.filter(u => u.uid !== auth.currentUser?.uid).length === 0 && (
+          {contacts.filter(u => u.uid !== currentUid).length === 0 && (
             <p className="text-gray-400 text-sm">No other members yet</p>
           )}
 
           {contacts
-            .filter(u => u.uid !== auth.currentUser?.uid)
+            .filter(u => u.uid !== currentUid)
             .map((u, i) => {
               const phone = u.phone || "";
               const waNumber = phone.startsWith("91") ? phone : `91${phone}`;
