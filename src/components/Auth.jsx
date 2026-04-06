@@ -54,7 +54,7 @@ function Auth() {
     }
   };
 
-  // 🟢 SIGNUP
+  //  SIGNUP
   const handleSignup = async () => {
     const { name, email, phone, password } = form;
 
@@ -83,7 +83,7 @@ function Auth() {
     }
   };
 
-  // 🔐 LOGIN
+  //  LOGIN
   const handleLogin = async () => {
     const { email, password } = form;
 
@@ -95,19 +95,20 @@ function Auth() {
     }
   };
 
-  // 🔑 FORGOT PASSWORD
+  //  FORGOT PASSWORD
   const handleForgotPassword = async () => {
     const { email } = form;
 
+    
     if (!email) {
-      return alert("Enter your email first");
+      return alert("Please enter your email first"); // ← CHANGED FROM HINDI TO ENGLISH
     }
 
     try {
       await sendPasswordResetEmail(auth, email);
-      alert("Password reset email sent ✅");
+      alert("Password reset email sent successfully ✅");
     } catch (err) {
-      alert("Enter a valid email");
+      alert("Please enter a valid email");
     }
   };
 
