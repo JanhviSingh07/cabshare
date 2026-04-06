@@ -7,27 +7,37 @@ function RideStatus() {
   const [contacts, setContacts] = useState([]);
   const [rideId, setRideId] = useState(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    const fetchRide = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+  const unsubAuth = auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    try {
       const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-      if (!profileSnap.exists()) return setLoading(false);
+      if (!profileSnap.exists()) {
+        setLoading(false);
+        return;
+      }
 
       const currentRideId = profileSnap.data().currentRideId;
-      if (!currentRideId) return setLoading(false);
+      if (!currentRideId) {
+        setLoading(false);
+        return;
+      }
 
       setRideId(currentRideId);
 
       const rideSnap = await getDoc(doc(db, "rides", currentRideId));
-      if (!rideSnap.exists()) return setLoading(false);
+      if (!rideSnap.exists()) {
+        setLoading(false);
+        return;
+      }
 
       const rideData = { id: rideSnap.id, ...rideSnap.data() };
       setRide(rideData);
 
-      // ✅ load contacts only after accepted
       const users = await Promise.all(
         rideData.participants.map(async (uid) => {
           const snap = await getDoc(doc(db, "profiles", uid));
@@ -36,11 +46,17 @@ function RideStatus() {
       );
 
       setContacts(users.filter(Boolean));
-      setLoading(false);
-    };
+    } catch (err) {
+      console.error(err);
+    }
 
-    fetchRide();
-  }, []);
+    setLoading(false);
+  });
+
+  return () => unsubAuth();
+}, []);
+
+  
 
   const user = auth.currentUser;
   const isOwner = ride?.createdBy === user?.uid;
