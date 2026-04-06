@@ -38,7 +38,6 @@ function RideStatus() {
 
         const rideData = { id: rideSnap.id, ...rideSnap.data() };
         setRide(rideData);
-        setCurrentUser(auth.currentUser);
 
         const users = await Promise.all(
           rideData.participants.map(async (uid) => {
@@ -79,9 +78,6 @@ function RideStatus() {
 
   if (loading) return <p className="text-center mt-10 text-white">Loading...</p>;
   if (!ride) return <p className="text-center mt-10 text-white">No active ride found</p>;
-  const [currentUser, setCurrentUser] = useState(auth.currentUser);
-
-  
 
   return (
     <div className="max-w-3xl mx-auto mt-10 px-2">
@@ -99,7 +95,7 @@ function RideStatus() {
           )}
 
           {contacts
-            .filter(u => u.uid !==auth.currentUser?.uid)
+            .filter(u => u.uid !== auth.currentUser?.uid)
             .map((u, i) => {
               const phone = u.phone || "";
               const waNumber = phone.startsWith("91") ? phone : `91${phone}`;
