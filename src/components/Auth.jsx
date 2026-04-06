@@ -4,7 +4,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail  // ✅ add kiya
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -22,16 +23,14 @@ function Auth() {
   const navigate = useNavigate();
 
   // 🔄 Handle input — phone ke liye alag handling
-  // 🔄 Handle input — phone ke liye alag handling
-const handleChange = (e) => {
-  if (e.target.name === "phone") {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 10); // ✅ sirf 10 digits
-    setForm({ ...form, phone: value });
-  } else {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-};
- 
+  const handleChange = (e) => {
+    if (e.target.name === "phone") {
+      const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+      setForm({ ...form, phone: value });
+    } else {
+      setForm({ ...form, [e.target.name]: e.target.value });
+    }
+  };
 
   // 🔵 GOOGLE LOGIN
   const loginWithGoogle = async () => {
@@ -68,7 +67,6 @@ const handleChange = (e) => {
       return alert("Use college email only");
     }
 
-    // ✅ Phone validation
     if (phone.length !== 10) {
       return alert("Enter a valid phone number (10 digits)");
     }
@@ -103,6 +101,22 @@ const handleChange = (e) => {
       navigate("/home");
     } catch (err) {
       alert("Invalid credentials");
+    }
+  };
+
+  // 🔑 FORGOT PASSWORD
+  const handleForgotPassword = async () => {
+    const { email } = form;
+
+    if (!email) {
+      return alert("Pehle email field mein apna email daalo");
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert("Password reset email bhej diya ✅ — apna inbox check karo");
+    } catch (err) {
+      alert("Error — sahi email daalo");
     }
   };
 
@@ -158,7 +172,6 @@ const handleChange = (e) => {
               className="w-full p-2 mb-3 rounded bg-slate-800"
             />
 
-            {/* ✅ Phone — sirf numbers, max 10 digits */}
             <input
               name="phone"
               type="tel"
@@ -197,6 +210,17 @@ const handleChange = (e) => {
         >
           {isLogin ? "Login" : "Create Account"}
         </button>
+
+        {/* ✅ FORGOT PASSWORD — sirf login tab dikhega */}
+        {isLogin && (
+          <p
+            onClick={handleForgotPassword}
+            className="text-center text-sm text-blue-400 hover:text-blue-300 mt-3 cursor-pointer"
+          >
+            Forgot Password?
+          </p>
+        )}
+
       </div>
     </div>
   );
