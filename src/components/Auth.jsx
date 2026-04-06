@@ -21,9 +21,14 @@ function Auth() {
 
   const navigate = useNavigate();
 
-  // 🔄 Handle input
+  // 🔄 Handle input — phone ke liye alag handling
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    if (e.target.name === "phone") {
+      const value = e.target.value.replace(/\D/g, "");
+      setForm({ ...form, phone: value });
+    } else {
+      setForm({ ...form, [e.target.name]: e.target.value });
+    }
   };
 
   // 🔵 GOOGLE LOGIN
@@ -53,8 +58,21 @@ function Auth() {
   const handleSignup = async () => {
     const { name, email, phone, password } = form;
 
+    if (!name.trim()) {
+      return alert("Name enter karo");
+    }
+
     if (!email.endsWith("@learner.manipal.edu")) {
       return alert("Use college email only");
+    }
+
+    // ✅ Phone validation
+    if (phone.length !== 10) {
+      return alert("Enter a valid phone number (10 digits)");
+    }
+
+    if (password.length < 6) {
+      return alert("Password kam se kam 6 characters ka hona chahiye");
     }
 
     try {
@@ -133,13 +151,19 @@ function Auth() {
             <input
               name="name"
               placeholder="Name"
+              value={form.name}
               onChange={handleChange}
               className="w-full p-2 mb-3 rounded bg-slate-800"
             />
 
+            {/* ✅ Phone — sirf numbers, max 10 digits */}
             <input
               name="phone"
-              placeholder="Phone"
+              type="tel"
+              inputMode="numeric"
+              placeholder="Phone (10 digits)"
+              value={form.phone}
+              maxLength={10}
               onChange={handleChange}
               className="w-full p-2 mb-3 rounded bg-slate-800"
             />
@@ -150,6 +174,7 @@ function Auth() {
         <input
           name="email"
           placeholder="Email"
+          value={form.email}
           onChange={handleChange}
           className="w-full p-2 mb-3 rounded bg-slate-800"
         />
@@ -158,6 +183,7 @@ function Auth() {
           type="password"
           name="password"
           placeholder="Password"
+          value={form.password}
           onChange={handleChange}
           className="w-full p-2 mb-4 rounded bg-slate-800"
         />
