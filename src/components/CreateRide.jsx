@@ -17,12 +17,20 @@ function CreateRide() {
   const [seats, setSeats] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // ✅ Dropdown options
+  const locations = ["manipal", "ixe airport"];
+
   const createRide = async () => {
     const user = auth.currentUser;
     if (!user) return alert("No user logged in");
 
+    // ✅ validation
     if (!from || !to || !date || !time) {
       return alert("Please fill all fields");
+    }
+
+    if (from === to) {
+      return alert("From and To cannot be same");
     }
 
     setLoading(true);
@@ -37,8 +45,8 @@ function CreateRide() {
       }
 
       const rideRef = await addDoc(collection(db, "rides"), {
-        from: from.trim().toLowerCase(),
-        to: to.trim().toLowerCase(),
+        from,
+        to,
         date,
         time,
         seats,
@@ -75,19 +83,31 @@ function CreateRide() {
 
       <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm space-y-4">
 
+        {/* ✅ DROPDOWN */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
-            placeholder="From"
+
+          <select
             value={from}
-            onChange={e => setFrom(e.target.value)}
-          />
-          <input
+            onChange={(e) => setFrom(e.target.value)}
             className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
-            placeholder="To"
+          >
+            <option value="">Select From</option>
+            {locations.map((loc, i) => (
+              <option key={i} value={loc}>{loc}</option>
+            ))}
+          </select>
+
+          <select
             value={to}
-            onChange={e => setTo(e.target.value)}
-          />
+            onChange={(e) => setTo(e.target.value)}
+            className="w-full p-3 rounded-lg bg-slate-700 text-white outline-none"
+          >
+            <option value="">Select To</option>
+            {locations.map((loc, i) => (
+              <option key={i} value={loc}>{loc}</option>
+            ))}
+          </select>
+
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">

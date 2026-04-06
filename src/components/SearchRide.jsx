@@ -18,11 +18,22 @@ function SearchRide() {
   const [rides, setRides] = useState([]);
   const [ownerNames, setOwnerNames] = useState({});
 
+  // ✅ Dropdown options
+  const locations = ["manipal", "ixe airport"];
+
   const searchRides = async () => {
+    if (!from || !to || !date) {
+      return alert("Please select all fields");
+    }
+
+    if (from === to) {
+      return alert("From and To cannot be same");
+    }
+
     const q = query(
       collection(db, "rides"),
-      where("from", "==", from.toLowerCase()),
-      where("to", "==", to.toLowerCase()),
+      where("from", "==", from),
+      where("to", "==", to),
       where("date", "==", date)
     );
 
@@ -58,14 +69,44 @@ function SearchRide() {
 
       <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
 
+        {/* ✅ DROPDOWN */}
         <div className="flex gap-3">
-          <input className="w-full p-3 bg-slate-700 rounded-lg" placeholder="From" value={from} onChange={e => setFrom(e.target.value)} />
-          <input className="w-full p-3 bg-slate-700 rounded-lg" placeholder="To" value={to} onChange={e => setTo(e.target.value)} />
+
+          <select
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="w-full p-3 bg-slate-700 rounded-lg text-white"
+          >
+            <option value="">From</option>
+            {locations.map((loc, i) => (
+              <option key={i} value={loc}>{loc}</option>
+            ))}
+          </select>
+
+          <select
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="w-full p-3 bg-slate-700 rounded-lg text-white"
+          >
+            <option value="">To</option>
+            {locations.map((loc, i) => (
+              <option key={i} value={loc}>{loc}</option>
+            ))}
+          </select>
+
         </div>
 
-        <input type="date" className="w-full p-3 bg-slate-700 rounded-lg" value={date} onChange={(e) => setDate(e.target.value)} />
+        <input
+          type="date"
+          className="w-full p-3 bg-slate-700 rounded-lg text-white"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
 
-        <button onClick={searchRides} className="w-full bg-blue-600 py-2 rounded-lg">
+        <button
+          onClick={searchRides}
+          className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg"
+        >
           Search Ride
         </button>
       </div>
@@ -74,14 +115,23 @@ function SearchRide() {
         {rides.map(ride => (
           <div key={ride.id} className="bg-slate-800 p-5 rounded-xl border border-slate-700">
 
-            <h3 className="font-semibold">{ride.from} → {ride.to}</h3>
-            <p className="text-gray-400 text-sm">{ride.date} | {ride.time}</p>
-            <p className="text-sm mt-1">Owner: {ownerNames[ride.createdBy]}</p>
+            <h3 className="font-semibold capitalize">
+              {ride.from} → {ride.to}
+            </h3>
+
+            <p className="text-gray-400 text-sm">
+              {ride.date} | {ride.time}
+            </p>
+
+            <p className="text-sm mt-1">
+              Owner: {ownerNames[ride.createdBy]}
+            </p>
+
             <p className="text-sm">Seats: {ride.seats}</p>
 
             <button
               onClick={() => requestToJoin(ride)}
-              className="w-full mt-3 bg-blue-600 py-2 rounded-lg"
+              className="w-full mt-3 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg"
             >
               Request to Join
             </button>
