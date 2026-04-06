@@ -44,19 +44,20 @@ function SearchRide() {
       setRides(results);
 
       // ✅ fetch owner names
-      const names = {};
-      for (let ride of results) {
-        try {
-          const psnap = await getDoc(doc(db, "profiles", ride.createdBy));
-          names[ride.createdBy] = psnap.exists()
-            ? psnap.data().name
-            : "Unknown";
-        } catch {
-          names[ride.createdBy] = "Unknown";
-        }
-      }
-
-      setOwnerNames(names);
+      // ✅ fetch owner names — getDoc fresh karo har baar
+const names = {};
+for (let ride of results) {
+  try {
+    const psnap = await getDoc(doc(db, "profiles", ride.createdBy));
+    names[ride.createdBy] = psnap.exists()
+      ? (psnap.data().name || "Unknown")
+      : "Unknown";
+  } catch {
+    names[ride.createdBy] = "Unknown";
+  }
+}
+setOwnerNames(names);
+     
 
     } catch (err) {
       console.error(err);

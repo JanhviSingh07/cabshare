@@ -16,46 +16,48 @@ function RideRequests() {
   const [myRides, setMyRides] = useState([]);
   const [requesterNames, setRequesterNames] = useState({});
 
-useEffect(() => {
-  const unsubAuth = auth.onAuthStateChanged((user) => {
-    if (!user) return;
+  useEffect(() => {
+    const unsubAuth = auth.onAuthStateChanged((user) => {
+      if (!user) return;
 
-    const q = query(
-      collection(db, "rides"),
-      where("createdBy", "==", user.uid)
-    );
-
-    const unsubSnap = onSnapshot(q, async (snap) => {
-      const rides = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setMyRides(rides);
-
-      const allUids = rides.flatMap(r => r.pendingRequests || []);
-      const uniqueUids = [...new Set(allUids)];
-      const nameMap = {};
-      await Promise.all(
-        uniqueUids.map(async (uid) => {
-          try {
-            const s = await getDoc(doc(db, "profiles", uid));
-            nameMap[uid] = s.exists() ? s.data().name : uid;
-          } catch {
-            nameMap[uid] = uid;
-          }
-        })
+      const q = query(
+        collection(db, "rides"),
+        where("createdBy", "==", user.uid)
       );
-      setRequesterNames(nameMap);
+
+      const unsubSnap = onSnapshot(q, async (snap) => {
+        const rides = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setMyRides(rides);
+
+        const allUids = rides.flatMap(r => r.pendingRequests || []);
+        const uniqueUids = [...new Set(allUids)];
+        const nameMap = {};
+        await Promise.all(
+          uniqueUids.map(async (uid) => {
+            try {
+              const s = await getDoc(doc(db, "profiles", uid));
+              // ✅ name fetch karo
+              nameMap[uid] = s.exists() ? (s.data().name || "Unknown") : "Unknown";
+            } catch {
+              nameMap[uid] = "Unknown";
+            }
+          })
+        );
+        setRequesterNames(nameMap);
+      });
+
+      return () => unsubSnap();
     });
 
-    return () => unsubSnap();
-  });
+    return () => unsubAuth();
+  }, []);
 
-  return () => unsubAuth();
-}, []);
   const acceptRequest = async (rideId, requesterId, ride) => {
     try {
       await updateDoc(doc(db, "rides", rideId), {
         pendingRequests: arrayRemove(requesterId),
         participants: arrayUnion(requesterId),
-        seats: Number(ride.seats) - 1  // ✅ FIX 2: Number() wrap karo
+        seats: Number(ride.seats) - 1
       });
 
       await updateDoc(doc(db, "profiles", requesterId), {
@@ -87,9 +89,7 @@ useEffect(() => {
 
   return (
     <div className="max-w-4xl mx-auto mt-10 px-2">
-      <h2 className="text-2xl font-bold text-center mb-6">
-        📩 Ride Requests
-      </h2>
+      <h2 className="text-2xl font-bold text-center mb-6">📩 Ride Requests</h2>
 
       {totalPending === 0 && (
         <p className="text-center text-gray-400">No requests yet</p>
@@ -102,16 +102,15 @@ useEffect(() => {
 
           return (
             <div key={ride.id} className="bg-slate-800 p-5 rounded-xl">
-              <h3 className="text-lg font-semibold">
-                {ride.from} → {ride.to}
-              </h3>
+              <h3 className="text-lg font-semibold">{ride.from} → {ride.to}</h3>
               <p className="text-sm text-gray-400 mb-3">
                 📅 {ride.date} | ⏰ {ride.time}
               </p>
 
               {pending.map((uid) => (
                 <div key={uid} className="mt-2 p-3 bg-slate-700 rounded-lg">
-                  <p className="text-sm mb-2">
+                  {/* ✅ naam dikhao UID nahi */}
+                  <p className="text-sm mb-2 font-semibold">
                     👤 {requesterNames[uid] || "Loading..."}
                   </p>
                   <div className="flex gap-2">
