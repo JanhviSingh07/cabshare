@@ -50,19 +50,19 @@ function Profile({ onProfileSaved }) {
 
     // ✅ Saari fields ka validation
     if (!profile.name.trim()) {
-      return alert("Name enter karo");
+      return alert("Enter Name");
     }
     if (profile.phone.length !== 10) {
-      return alert("Phone number exactly 10 digits hona chahiye");
+      return alert("Enter avalid Phone Number");
     }
     if (!profile.gender) {
-      return alert("Gender select karo");
+      return alert("Select Gender");
     }
     if (!profile.college.trim()) {
-      return alert("College enter karo");
+      return alert("Enter College Name");
     }
     if (!profile.regNo.trim()) {
-      return alert("Registration number enter karo");
+      return alert("Enter Registration Number");
     }
 
     setSaving(true);

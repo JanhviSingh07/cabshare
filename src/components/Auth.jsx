@@ -22,14 +22,16 @@ function Auth() {
   const navigate = useNavigate();
 
   // 🔄 Handle input — phone ke liye alag handling
-  const handleChange = (e) => {
-    if (e.target.name === "phone") {
-      const value = e.target.value.replace(/\D/g, "");
-      setForm({ ...form, phone: value });
-    } else {
-      setForm({ ...form, [e.target.name]: e.target.value });
-    }
-  };
+  // 🔄 Handle input — phone ke liye alag handling
+const handleChange = (e) => {
+  if (e.target.name === "phone") {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10); // ✅ sirf 10 digits
+    setForm({ ...form, phone: value });
+  } else {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+};
+ 
 
   // 🔵 GOOGLE LOGIN
   const loginWithGoogle = async () => {
