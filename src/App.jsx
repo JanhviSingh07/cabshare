@@ -16,27 +16,29 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
 
+  // ✅ Alag function — login pe bhi call hoga, save ke baad bhi
+  const checkProfile = async (u) => {
+    const snap = await getDoc(doc(db, "profiles", u.uid));
+    if (
+      snap.exists() &&
+      snap.data().name &&
+      snap.data().phone &&
+      snap.data().gender &&
+      snap.data().college &&
+      snap.data().regNo
+    ) {
+      setProfileComplete(true);
+    } else {
+      setProfileComplete(false);
+    }
+  };
+
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (u) => {
       setUser(u);
-
-      if (u) {
-        const snap = await getDoc(doc(db, "profiles", u.uid));
-
-        if (
-          snap.exists() &&
-          snap.data().name &&
-          snap.data().phone
-        ) {
-          setProfileComplete(true);
-        } else {
-          setProfileComplete(false);
-        }
-      }
-
+      if (u) await checkProfile(u);
       setLoading(false);
     });
-
     return () => unsub();
   }, []);
 
@@ -64,15 +66,20 @@ function App() {
           <Route path="*" element={<Auth />} />
         )}
 
-        {/* FORCE PROFILE */}
+        {/* FORCE PROFILE — jab tak sab fields nahi bhari, yahan raho */}
         {user && !profileComplete && (
           <>
-            <Route path="/profile" element={<Profile />} />
+            <Route
+              path="/profile"
+              element={
+                <Profile onProfileSaved={() => checkProfile(user)} />
+              }
+            />
             <Route path="*" element={<Navigate to="/profile" />} />
           </>
         )}
 
-        {/* NORMAL FLOW */}
+        {/* NORMAL FLOW — sab fields bhar di toh yahan aao */}
         {user && profileComplete && (
           <>
             <Route path="/" element={<Navigate to="/home" />} />
@@ -81,7 +88,12 @@ function App() {
             <Route path="/search-ride" element={<SearchRide />} />
             <Route path="/requests" element={<RideRequests />} />
             <Route path="/status" element={<RideStatus />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route
+              path="/profile"
+              element={
+                <Profile onProfileSaved={() => checkProfile(user)} />
+              }
+            />
           </>
         )}
 

@@ -3,7 +3,7 @@ import { db, auth } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
-function Profile() {
+function Profile({ onProfileSaved }) {
   const user = auth.currentUser;
   const navigate = useNavigate();
 
@@ -48,12 +48,21 @@ function Profile() {
   const saveProfile = async () => {
     if (!user) return;
 
+    // ✅ Saari fields ka validation
     if (!profile.name.trim()) {
-      return alert("Enter your name");
+      return alert("Name enter karo");
     }
-
     if (profile.phone.length !== 10) {
-      return alert("Phone number must be exactly 10 digits");
+      return alert("Phone number exactly 10 digits hona chahiye");
+    }
+    if (!profile.gender) {
+      return alert("Gender select karo");
+    }
+    if (!profile.college.trim()) {
+      return alert("College enter karo");
+    }
+    if (!profile.regNo.trim()) {
+      return alert("Registration number enter karo");
     }
 
     setSaving(true);
@@ -64,11 +73,17 @@ function Profile() {
       await setDoc(ref, {
         ...profile,
         name: profile.name.trim(),
+        college: profile.college.trim(),
+        regNo: profile.regNo.trim(),
       }, { merge: true });
+
+      // ✅ Pehle App.jsx ko batao ki profile save ho gayi
+      // Taki profileComplete true ho jaye
+      if (onProfileSaved) await onProfileSaved();
 
       alert("Profile saved ✅");
 
-      // ✅ AUTO REDIRECT
+      // ✅ Ab navigate karo — ab profileComplete true hai
       navigate("/home");
 
     } catch (err) {
