@@ -47,7 +47,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white px-4">
+    <div className="min-h-screen bg-[#0f172a] text-gray-100 px-4">
 
       <Toaster />
 

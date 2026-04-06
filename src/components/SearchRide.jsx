@@ -17,185 +17,77 @@ function SearchRide() {
   const [date, setDate] = useState("");
   const [rides, setRides] = useState([]);
   const [ownerNames, setOwnerNames] = useState({});
-  const [loading, setLoading] = useState(false);
 
   const searchRides = async () => {
-    if (!from || !to || !date) {
-      return alert("Enter all fields");
+    const q = query(
+      collection(db, "rides"),
+      where("from", "==", from.toLowerCase()),
+      where("to", "==", to.toLowerCase()),
+      where("date", "==", date)
+    );
+
+    const snap = await getDocs(q);
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    setRides(results);
+
+    const names = {};
+    for (let ride of results) {
+      const psnap = await getDoc(doc(db, "profiles", ride.createdBy));
+      names[ride.createdBy] = psnap.exists()
+        ? psnap.data().name
+        : "User";
     }
-
-    setLoading(true);
-
-    try {
-      const q = query(
-        collection(db, "rides"),
-        where("from", "==", from.toLowerCase()),
-        where("to", "==", to.toLowerCase()),
-        where("date", "==", date)
-      );
-
-      const snap = await getDocs(q);
-
-      const results = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }));
-
-      setRides(results);
-
-      // ✅ fetch owner names
-      // ✅ fetch owner names — getDoc fresh karo har baar
-const names = {};
-for (let ride of results) {
-  try {
-    const psnap = await getDoc(doc(db, "profiles", ride.createdBy));
-    names[ride.createdBy] = psnap.exists()
-      ? (psnap.data().name || "Unknown")
-      : "Unknown";
-  } catch {
-    names[ride.createdBy] = "Unknown";
-  }
-}
-setOwnerNames(names);
-     
-
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching rides");
-    }
-
-    setLoading(false);
+    setOwnerNames(names);
   };
 
-  
-    const requestToJoin = async (ride) => {
-  const user = auth.currentUser;
-  if (!user) return alert("Login first");
+  const requestToJoin = async (ride) => {
+    const user = auth.currentUser;
 
-  try {
-    if (ride.createdBy === user.uid) {
-      return alert("This is your ride");
-    }
-
-    if (ride.participants?.includes(user.uid)) {
-      return alert("Already joined");
-    }
-
-    if (ride.pendingRequests?.includes(user.uid)) {
-      return alert("Already requested");
-    }
-
-    if (ride.seats <= 0) {
-      return alert("Ride full");
-    }
-
-    const profileRef = doc(db, "profiles", user.uid);
-    const profileSnap = await getDoc(profileRef);
-
-    if (!profileSnap.exists()) {
-      return alert("Complete profile first");
-    }
-
-    if (profileSnap.data().currentRideId) {
-      return alert("You are already in a ride");
-    }
-
-    // 🔥 THIS IS THE REAL FIX
     await updateDoc(doc(db, "rides", ride.id), {
       pendingRequests: arrayUnion(user.uid)
     });
 
-    alert("Request sent 🚀");
-
-  } catch (err) {
-    console.error(err);
-    alert("Error sending request");
-  }
-};
+    alert("Request sent");
+  };
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 px-2">
+    <div className="max-w-3xl mx-auto mt-10 px-4">
 
-      <h2 className="text-2xl font-bold mb-6 text-center">
-        🔍 Find a Ride
-      </h2>
+      <h2 className="text-xl font-semibold mb-6">Find a Ride</h2>
 
-      <div className="bg-slate-800 p-6 rounded-xl space-y-4">
+      <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white"
-            placeholder="From"
-            value={from}
-            onChange={e => setFrom(e.target.value.toLowerCase())}
-          />
-
-          <input
-            className="w-full sm:flex-1 p-3 rounded-lg bg-slate-700 text-white"
-            placeholder="To"
-            value={to}
-            onChange={e => setTo(e.target.value.toLowerCase())}
-          />
+        <div className="flex gap-3">
+          <input className="w-full p-3 bg-slate-700 rounded-lg" placeholder="From" value={from} onChange={e => setFrom(e.target.value)} />
+          <input className="w-full p-3 bg-slate-700 rounded-lg" placeholder="To" value={to} onChange={e => setTo(e.target.value)} />
         </div>
 
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full p-3 rounded-lg bg-slate-700 text-white"
-        />
+        <input type="date" className="w-full p-3 bg-slate-700 rounded-lg" value={date} onChange={(e) => setDate(e.target.value)} />
 
-        <button
-          onClick={searchRides}
-          className="w-full bg-blue-500 p-3 rounded-lg"
-        >
-          {loading ? "Searching..." : "Search Ride 🚀"}
+        <button onClick={searchRides} className="w-full bg-blue-600 py-2 rounded-lg">
+          Search Ride
         </button>
       </div>
 
       <div className="mt-6 space-y-4">
-        {rides.map(ride => {
-          const user = auth.currentUser;
+        {rides.map(ride => (
+          <div key={ride.id} className="bg-slate-800 p-5 rounded-xl border border-slate-700">
 
-          const isOwner = ride.createdBy === user?.uid;
-          const isJoined = ride.participants?.includes(user?.uid);
-          const isRequested = ride.pendingRequests?.includes(user?.uid);
-          const isFull = ride.seats <= 0;
+            <h3 className="font-semibold">{ride.from} → {ride.to}</h3>
+            <p className="text-gray-400 text-sm">{ride.date} | {ride.time}</p>
+            <p className="text-sm mt-1">Owner: {ownerNames[ride.createdBy]}</p>
+            <p className="text-sm">Seats: {ride.seats}</p>
 
-          return (
-            <div key={ride.id} className="bg-slate-800 p-5 rounded-xl">
+            <button
+              onClick={() => requestToJoin(ride)}
+              className="w-full mt-3 bg-blue-600 py-2 rounded-lg"
+            >
+              Request to Join
+            </button>
 
-              <h3>{ride.from} → {ride.to}</h3>
-
-              <p className="text-gray-400">
-                📅 {ride.date} | ⏰ {ride.time}
-              </p>
-
-              <p>
-                👤 Owner: {ownerNames[ride.createdBy] || "Loading..."}
-              </p>
-
-              <p>💺 Seats: {ride.seats}</p>
-
-              <button
-                disabled={isOwner || isJoined || isRequested || isFull}
-                onClick={() => requestToJoin(ride)}
-                className="w-full mt-2 p-2 rounded bg-blue-500"
-              >
-                {isOwner
-                  ? "Your Ride"
-                  : isJoined
-                  ? "Joined"
-                  : isRequested
-                  ? "Requested"
-                  : isFull
-                  ? "Full"
-                  : "Request to Join"}
-              </button>
-
-            </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
