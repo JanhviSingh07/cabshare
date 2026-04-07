@@ -48,21 +48,20 @@ function Profile({ onProfileSaved }) {
   const saveProfile = async () => {
     if (!user) return;
 
-    // ✅ Saari fields ka validation
     if (!profile.name.trim()) {
-      return alert("Enter Name");
+      return alert("Name enter karo");
     }
     if (profile.phone.length !== 10) {
-      return alert("Enter avalid Phone Number");
+      return alert("Phone number exactly 10 digits hona chahiye");
     }
     if (!profile.gender) {
-      return alert("Select Gender");
+      return alert("Gender select karo");
     }
     if (!profile.college.trim()) {
-      return alert("Enter College Name");
+      return alert("College enter karo");
     }
     if (!profile.regNo.trim()) {
-      return alert("Enter Registration Number");
+      return alert("Registration number enter karo");
     }
 
     setSaving(true);
@@ -77,13 +76,9 @@ function Profile({ onProfileSaved }) {
         regNo: profile.regNo.trim(),
       }, { merge: true });
 
-      // ✅ Pehle App.jsx ko batao ki profile save ho gayi
-      // Taki profileComplete true ho jaye
       if (onProfileSaved) await onProfileSaved();
 
       alert("Profile saved ✅");
-
-      // ✅ Ab navigate karo — ab profileComplete true hai
       navigate("/home");
 
     } catch (err) {
@@ -129,7 +124,7 @@ function Profile({ onProfileSaved }) {
             value={profile.phone}
             maxLength={10}
             onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, "");
+              const value = e.target.value.replace(/\D/g, "").slice(0, 10);
               setProfile({ ...profile, phone: value });
             }}
             className="w-full p-3 rounded-lg bg-slate-800"
@@ -156,12 +151,15 @@ function Profile({ onProfileSaved }) {
             className="w-full p-3 rounded-lg bg-slate-800"
           />
 
+          {/* ✅ regNo — sirf digits allowed */}
           <input
-            placeholder="Registration Number"
+            placeholder="Registration Number )"
             value={profile.regNo}
-            onChange={(e) =>
-              setProfile({ ...profile, regNo: e.target.value })
-            }
+            inputMode="numeric"
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, "");
+              setProfile({ ...profile, regNo: value });
+            }}
             className="w-full p-3 rounded-lg bg-slate-800"
           />
 
