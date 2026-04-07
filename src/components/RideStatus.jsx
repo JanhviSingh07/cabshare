@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
-import { doc, getDoc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore";
 
 function RideStatus() {
   const [ride, setRide] = useState(null);
@@ -11,8 +11,9 @@ function RideStatus() {
 
   useEffect(() => {
     let unsubRide = null;
+    let unsubProfile = null;
 
-    const unsubAuth = auth.onAuthStateChanged(async (user) => {
+    const unsubAuth = auth.onAuthStateChanged((user) => {
       if (!user) {
         setLoading(false);
         return;
@@ -20,56 +21,64 @@ function RideStatus() {
 
       setCurrentUid(user.uid);
 
-      // ✅ Step 1: profile se currentRideId lo
-      const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-
-      if (!profileSnap.exists()) {
-        setLoading(false);
-        return;
-      }
-
-      const currentRideId = profileSnap.data().currentRideId;
-
-      if (!currentRideId) {
-        setLoading(false);
-        return;
-      }
-
-      setRideId(currentRideId);
-
-      // ✅ Step 2: ride ko realtime listen karo
-      unsubRide = onSnapshot(doc(db, "rides", currentRideId), async (rideSnap) => {
-        if (!rideSnap.exists()) {
-          setRide(null);
+      // ✅ Profile ko REALTIME listen karo — ek baar fetch nahi
+      unsubProfile = onSnapshot(doc(db, "profiles", user.uid), async (profileSnap) => {
+        if (!profileSnap.exists()) {
           setLoading(false);
           return;
         }
 
-        const rideData = { id: rideSnap.id, ...rideSnap.data() };
-        setRide(rideData);
+        const currentRideId = profileSnap.data().currentRideId;
 
-        // ✅ Step 3: SAARE participants ke contacts fetch karo
-        // creator + joined dono ko dikhega
-        const allParticipants = rideData.participants || [];
+        if (!currentRideId) {
+          setRide(null);
+          setRideId(null);
+          setLoading(false);
+          return;
+        }
 
-        const users = await Promise.all(
-          allParticipants.map(async (uid) => {
-            try {
-              const snap = await getDoc(doc(db, "profiles", uid));
-              return snap.exists() ? { uid, ...snap.data() } : null;
-            } catch {
-              return null;
-            }
-          })
-        );
+        setRideId(currentRideId);
 
-        setContacts(users.filter(Boolean));
-        setLoading(false);
+        // ✅ Ride bhi realtime listen karo
+        if (unsubRide) unsubRide(); // pehla listener hatao
+
+        unsubRide = onSnapshot(doc(db, "rides", currentRideId), async (rideSnap) => {
+          if (!rideSnap.exists()) {
+            setRide(null);
+            setLoading(false);
+            return;
+          }
+
+          const rideData = { id: rideSnap.id, ...rideSnap.data() };
+          setRide(rideData);
+
+          // ✅ Saare participants fetch karo
+          const allParticipants = rideData.participants || [];
+          const users = await Promise.all(
+            allParticipants.map(async (uid) => {
+              try {
+                const snap = await new Promise((resolve) => {
+                  const unsub = onSnapshot(doc(db, "profiles", uid), (s) => {
+                    unsub();
+                    resolve(s);
+                  });
+                });
+                return snap.exists() ? { uid, ...snap.data() } : null;
+              } catch {
+                return null;
+              }
+            })
+          );
+
+          setContacts(users.filter(Boolean));
+          setLoading(false);
+        });
       });
     });
 
     return () => {
       unsubAuth();
+      if (unsubProfile) unsubProfile();
       if (unsubRide) unsubRide();
     };
   }, []);
@@ -79,13 +88,11 @@ function RideStatus() {
     if (!user || !ride || !rideId) return;
 
     try {
-      // ✅ participants array se uid hatao
       await updateDoc(doc(db, "rides", rideId), {
         participants: arrayRemove(user.uid),
         seats: Number(ride.seats) + 1
       });
 
-      // ✅ profile se currentRideId hatao
       await updateDoc(doc(db, "profiles", user.uid), {
         currentRideId: null
       });
@@ -116,7 +123,6 @@ function RideStatus() {
         <div className="mt-4 bg-slate-700 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-white">📞 Ride Members</h3>
 
-          {/* ✅ Khud ko chhod ke baaki sab dikhao */}
           {contacts.filter(u => u.uid !== currentUid).length === 0 && (
             <p className="text-gray-400 text-sm">No other members yet</p>
           )}
