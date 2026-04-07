@@ -133,7 +133,7 @@ function RideStatus() {
               const phone = u.phone || "";
               const waNumber = phone.startsWith("91") ? phone : `91${phone}`;
               const waMessage = encodeURIComponent(
-                `Hi ${u.name}! I'm your cab partner for the ride from ${ride.from} to ${ride.to} on ${ride.date} at ${ride.time}. Looking forward to sharing the cab! 🚖`
+                `Hi ${u.name}! I'm your cab partner for the ride from ${ride.from} to ${ride.to} on ${ride.date} at ${ride.time}. Looking forward to sharing the cab! `
               );
 
               return (
