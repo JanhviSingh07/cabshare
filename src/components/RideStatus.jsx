@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
-import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore";
 
 function RideStatus() {
   const [ride, setRide] = useState(null);
@@ -20,14 +20,16 @@ function RideStatus() {
 
       setCurrentUid(user.uid);
 
-      // Step 1: get profile once
+      // ✅ Step 1: profile se currentRideId lo
       const profileSnap = await getDoc(doc(db, "profiles", user.uid));
+
       if (!profileSnap.exists()) {
         setLoading(false);
         return;
       }
 
       const currentRideId = profileSnap.data().currentRideId;
+
       if (!currentRideId) {
         setLoading(false);
         return;
@@ -35,9 +37,10 @@ function RideStatus() {
 
       setRideId(currentRideId);
 
-      // Step 2: listen to ride in realtime
+      // ✅ Step 2: ride ko realtime listen karo
       unsubRide = onSnapshot(doc(db, "rides", currentRideId), async (rideSnap) => {
         if (!rideSnap.exists()) {
+          setRide(null);
           setLoading(false);
           return;
         }
@@ -45,10 +48,18 @@ function RideStatus() {
         const rideData = { id: rideSnap.id, ...rideSnap.data() };
         setRide(rideData);
 
+        // ✅ Step 3: SAARE participants ke contacts fetch karo
+        // creator + joined dono ko dikhega
+        const allParticipants = rideData.participants || [];
+
         const users = await Promise.all(
-          rideData.participants.map(async (uid) => {
-            const snap = await getDoc(doc(db, "profiles", uid));
-            return snap.exists() ? { uid, ...snap.data() } : null;
+          allParticipants.map(async (uid) => {
+            try {
+              const snap = await getDoc(doc(db, "profiles", uid));
+              return snap.exists() ? { uid, ...snap.data() } : null;
+            } catch {
+              return null;
+            }
           })
         );
 
@@ -65,26 +76,39 @@ function RideStatus() {
 
   const leaveRide = async () => {
     const user = auth.currentUser;
-    if (!user || !ride) return;
+    if (!user || !ride || !rideId) return;
 
-    await updateDoc(doc(db, "rides", rideId), {
-      participants: ride.participants.filter(uid => uid !== user.uid),
-      seats: Number(ride.seats) + 1
-    });
+    try {
+      // ✅ participants array se uid hatao
+      await updateDoc(doc(db, "rides", rideId), {
+        participants: arrayRemove(user.uid),
+        seats: Number(ride.seats) + 1
+      });
 
-    await updateDoc(doc(db, "profiles", user.uid), {
-      currentRideId: null
-    });
+      // ✅ profile se currentRideId hatao
+      await updateDoc(doc(db, "profiles", user.uid), {
+        currentRideId: null
+      });
 
-    window.location.reload();
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Error leaving ride");
+    }
   };
 
-  if (loading) return <p className="text-center mt-10 text-white">Loading...</p>;
-  if (!ride) return <p className="text-center mt-10 text-white">No active ride found</p>;
+  if (loading) return (
+    <p className="text-center mt-10 text-white">Loading...</p>
+  );
+
+  if (!ride) return (
+    <p className="text-center mt-10 text-white">No active ride found</p>
+  );
 
   return (
     <div className="max-w-3xl mx-auto mt-10 px-2">
       <div className="bg-slate-800 p-6 rounded-xl space-y-3">
+
         <h2 className="text-xl font-bold text-white">🚗 Your Ride</h2>
         <p className="text-lg text-white">{ride.from} → {ride.to}</p>
         <p className="text-gray-400">{ride.date} | {ride.time}</p>
@@ -92,6 +116,7 @@ function RideStatus() {
         <div className="mt-4 bg-slate-700 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-white">📞 Ride Members</h3>
 
+          {/* ✅ Khud ko chhod ke baaki sab dikhao */}
           {contacts.filter(u => u.uid !== currentUid).length === 0 && (
             <p className="text-gray-400 text-sm">No other members yet</p>
           )}
@@ -104,10 +129,12 @@ function RideStatus() {
               const waMessage = encodeURIComponent(
                 `Hi ${u.name}! I'm your cab partner for the ride from ${ride.from} to ${ride.to} on ${ride.date} at ${ride.time}. Looking forward to sharing the cab! 🚖`
               );
+
               return (
                 <div key={i} className="bg-slate-600 p-4 rounded-lg mb-3">
                   <p className="font-semibold text-white">👤 {u.name || "Unknown"}</p>
                   <p className="text-gray-300 text-sm mt-1">📱 {phone || "Not provided"}</p>
+
                   {phone && (
                     <a
                       href={`https://wa.me/${waNumber}?text=${waMessage}`}
@@ -129,6 +156,7 @@ function RideStatus() {
         >
           Leave Ride 🚪
         </button>
+
       </div>
     </div>
   );
