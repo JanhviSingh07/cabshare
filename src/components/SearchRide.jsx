@@ -59,6 +59,10 @@ function SearchRide() {
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(ride => ride.status !== "cancelled");
 
+        if (results.length === 0) {
+        alert("No rides available for the selected date.");
+      }
+
       setRides(results);
 
       const names = {};
@@ -174,7 +178,7 @@ function SearchRide() {
       <div className="mt-6 space-y-4">
 
         {rides.length === 0 && date && (
-          <p className="text-center text-gray-400">Koi ride nahi mili</p>
+          <p className="text-center text-gray-400">No Rides Found</p>
         )}
 
         {rides.map(ride => {
