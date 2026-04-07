@@ -48,6 +48,8 @@ function RideRequests() {
 
   const accept = async (rideId, uid, ride) => {
     try {
+       console.log("Accepting ride for uid:", uid);  // ✅ dekho ye sahi uid hai?
+    console.log("Ride ID:", rideId);
       // ✅ Ride update karo
       await updateDoc(doc(db, "rides", rideId), {
         pendingRequests: arrayRemove(uid),
