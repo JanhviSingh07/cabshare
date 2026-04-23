@@ -1,15 +1,6 @@
 import { useState } from "react";
 import { db, auth } from "../firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  arrayUnion
-} from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 
 function SearchRide() {
   const [from, setFrom] = useState("");
@@ -19,31 +10,15 @@ function SearchRide() {
   const [ownerNames, setOwnerNames] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const locations = [
-    "manipal",
-    "ixe airport",
-    
-  ];
-
-  // ✅ Aaj ki date YYYY-MM-DD format mein
+  const locations = ["manipal", "ixe airport"];
   const today = new Date().toISOString().split("T")[0];
 
   const searchRides = async () => {
-    if (!from || !to || !date) {
-      return alert("Please select all fields");
-    }
-
-    if (from === to) {
-      return alert("From and To cannot be the same");
-    }
-
-    // ✅ Past date block karo
-    if (date < today) {
-      return alert("Invalid date. Please select today or a future date.");
-    }
+    if (!from || !to || !date) return alert("Please select all fields");
+    if (from === to) return alert("From and To cannot be the same");
+    if (date < today) return alert("Please select today or a future date");
 
     setLoading(true);
-
     try {
       const q = query(
         collection(db, "rides"),
@@ -51,73 +26,38 @@ function SearchRide() {
         where("to", "==", to),
         where("date", "==", date)
       );
-
       const snap = await getDocs(q);
-
-      // ✅ Cancelled rides filter karo
-      const results = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(ride => ride.status !== "cancelled");
-
-        if (results.length === 0) {
-        alert("No rides available for the selected date.");
-      }
-
+      const results = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.status !== "cancelled");
+      if (results.length === 0) alert("No rides available for the selected date.");
       setRides(results);
 
       const names = {};
       for (let ride of results) {
         try {
           const psnap = await getDoc(doc(db, "profiles", ride.createdBy));
-          names[ride.createdBy] = psnap.exists()
-            ? (psnap.data().name || "Unknown")
-            : "Unknown";
-        } catch {
-          names[ride.createdBy] = "Unknown";
-        }
+          names[ride.createdBy] = psnap.exists() ? (psnap.data().name || "Unknown") : "Unknown";
+        } catch { names[ride.createdBy] = "Unknown"; }
       }
       setOwnerNames(names);
-
     } catch (err) {
       console.error(err);
       alert("Error fetching rides");
     }
-
     setLoading(false);
   };
 
   const requestToJoin = async (ride) => {
     const user = auth.currentUser;
     if (!user) return alert("Login required");
-
     try {
-      if (ride.createdBy === user.uid) {
-        return alert("This is your own ride");
-      }
-
-      if (ride.participants?.includes(user.uid)) {
-        return alert("Already joined ");
-      }
-
-      if (ride.pendingRequests?.includes(user.uid)) {
-        return alert("Already requested");
-      }
-
-      if (ride.seats <= 0) {
-        return alert("Ride full ");
-      }
-
+      if (ride.createdBy === user.uid) return alert("This is your own ride");
+      if (ride.participants?.includes(user.uid)) return alert("Already joined");
+      if (ride.pendingRequests?.includes(user.uid)) return alert("Already requested");
+      if (ride.seats <= 0) return alert("Ride full");
       const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-      if (profileSnap.data()?.currentRideId) {
-        return alert("You are already in another ride");
-      }
-
-      await updateDoc(doc(db, "rides", ride.id), {
-        pendingRequests: arrayUnion(user.uid)
-      });
-
-      alert("Request sent ✅");
-
+      if (profileSnap.data()?.currentRideId) return alert("You are already in another ride");
+      await updateDoc(doc(db, "rides", ride.id), { pendingRequests: arrayUnion(user.uid) });
+      alert("Request sent");
     } catch (err) {
       console.error(err);
       alert("Error sending request");
@@ -125,111 +65,79 @@ function SearchRide() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 px-4">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-xl mx-auto px-6 py-12">
 
-      <h2 className="text-xl font-semibold mb-6">🔍 Find a Ride</h2>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Find a Ride</h1>
+        <p className="text-gray-500 text-sm mb-8">Search for available rides near you</p>
 
-      <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">From</label>
+              <select value={from} onChange={(e) => setFrom(e.target.value)}
+                className="w-full border border-gray-200 focus:border-gray-800 outline-none p-3 rounded-xl text-sm text-gray-900 bg-white transition capitalize">
+                <option value="">Select</option>
+                {locations.map((loc, i) => <option key={i} value={loc} className="capitalize">{loc}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">To</label>
+              <select value={to} onChange={(e) => setTo(e.target.value)}
+                className="w-full border border-gray-200 focus:border-gray-800 outline-none p-3 rounded-xl text-sm text-gray-900 bg-white transition capitalize">
+                <option value="">Select</option>
+                {locations.map((loc, i) => <option key={i} value={loc} className="capitalize">{loc}</option>)}
+              </select>
+            </div>
+          </div>
 
-        {/* DROPDOWNS */}
-        <div className="flex gap-3">
-          <select
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="w-full p-3 bg-slate-700 rounded-lg text-white capitalize"
-          >
-            <option value="">From</option>
-            {locations.map((loc, i) => (
-              <option key={i} value={loc} className="capitalize">{loc}</option>
-            ))}
-          </select>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">Date</label>
+            <input type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)}
+              className="w-full border border-gray-200 focus:border-gray-800 outline-none p-3 rounded-xl text-sm text-gray-900 bg-white transition" />
+          </div>
 
-          <select
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="w-full p-3 bg-slate-700 rounded-lg text-white capitalize"
-          >
-            <option value="">To</option>
-            {locations.map((loc, i) => (
-              <option key={i} value={loc} className="capitalize">{loc}</option>
-            ))}
-          </select>
+          <button onClick={searchRides} disabled={loading}
+            className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-xl font-semibold text-sm transition disabled:bg-gray-300">
+            {loading ? "Searching..." : "Search"}
+          </button>
         </div>
 
-        {/* ✅ Min date = aaj — past date select nahi hogi */}
-        <input
-          type="date"
-          className="w-full p-3 bg-slate-700 rounded-lg text-white"
-          value={date}
-          min={today}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        {/* Results */}
+        <div className="mt-8 space-y-3">
+          {rides.map(ride => {
+            const user = auth.currentUser;
+            const isOwner = ride.createdBy === user?.uid;
+            const isJoined = ride.participants?.includes(user?.uid);
+            const isRequested = ride.pendingRequests?.includes(user?.uid);
+            const isFull = ride.seats <= 0;
 
-        <button
-          onClick={searchRides}
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:bg-gray-500"
-        >
-          {loading ? "Searching..." : "Search Ride 🔍"}
-        </button>
-      </div>
+            return (
+              <div key={ride.id} className="border border-gray-200 rounded-2xl p-5 hover:border-gray-400 transition">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 capitalize">{ride.from} → {ride.to}</h3>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${isFull ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+                    {isFull ? "Full" : `${ride.seats} seats`}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mb-1">{ride.date} · {ride.time}</p>
+                <p className="text-sm text-gray-500 mb-4">Host: {ownerNames[ride.createdBy] || "Loading..."}</p>
 
-      {/* RESULTS */}
-      <div className="mt-6 space-y-4">
-
-        {rides.length === 0 && date && (
-          <p className="text-center text-gray-400">No Rides Found</p>
-        )}
-
-        {rides.map(ride => {
-          const user = auth.currentUser;
-          const isOwner = ride.createdBy === user?.uid;
-          const isJoined = ride.participants?.includes(user?.uid);
-          const isRequested = ride.pendingRequests?.includes(user?.uid);
-          const isFull = ride.seats <= 0;
-
-          return (
-            <div key={ride.id} className="bg-slate-800 p-5 rounded-xl border border-slate-700">
-
-              <h3 className="font-semibold capitalize">
-                {ride.from} → {ride.to}
-              </h3>
-
-              <p className="text-gray-400 text-sm">
-                📅 {ride.date} | ⏰ {ride.time}
-              </p>
-
-              <p className="text-sm mt-1">
-                👤 Owner: {ownerNames[ride.createdBy] || "Loading..."}
-              </p>
-
-              <p className="text-sm">
-                💺 Seats: {ride.seats}
-              </p>
-
-              <button
-                disabled={isOwner || isJoined || isRequested || isFull}
-                onClick={() => requestToJoin(ride)}
-                className={`w-full mt-3 py-2 rounded-lg font-medium ${
-                  isOwner || isJoined || isRequested || isFull
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {isOwner
-                  ? "Ride is"
-                  : isJoined
-                  ? "✅ Joined"
-                  : isRequested
-                  ? "⏳ Requested"
-                  : isFull
-                  ? "❌ Full"
-                  : "Request to Join"}
-              </button>
-
-            </div>
-          );
-        })}
+                <button
+                  disabled={isOwner || isJoined || isRequested || isFull}
+                  onClick={() => requestToJoin(ride)}
+                  className={`w-full py-2.5 rounded-xl text-sm font-medium transition ${
+                    isOwner || isJoined || isRequested || isFull
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-black hover:bg-gray-800 text-white"
+                  }`}
+                >
+                  {isOwner ? "Your Ride" : isJoined ? "Joined" : isRequested ? "Requested" : isFull ? "Full" : "Request to Join"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

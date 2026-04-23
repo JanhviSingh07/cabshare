@@ -14,62 +14,31 @@ function RideStatus() {
     let unsubProfile = null;
 
     const unsubAuth = auth.onAuthStateChanged((user) => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
+      if (!user) { setLoading(false); return; }
       setCurrentUid(user.uid);
 
-      // ✅ Profile ko REALTIME listen karo — ek baar fetch nahi
       unsubProfile = onSnapshot(doc(db, "profiles", user.uid), async (profileSnap) => {
-        if (!profileSnap.exists()) {
-          setLoading(false);
-          return;
-        }
-
+        if (!profileSnap.exists()) { setLoading(false); return; }
         const currentRideId = profileSnap.data().currentRideId;
-
-        if (!currentRideId) {
-          setRide(null);
-          setRideId(null);
-          setLoading(false);
-          return;
-        }
-
+        if (!currentRideId) { setRide(null); setRideId(null); setLoading(false); return; }
         setRideId(currentRideId);
-
-        // ✅ Ride bhi realtime listen karo
-        if (unsubRide) unsubRide(); // pehla listener hatao
+        if (unsubRide) unsubRide();
 
         unsubRide = onSnapshot(doc(db, "rides", currentRideId), async (rideSnap) => {
-          if (!rideSnap.exists()) {
-            setRide(null);
-            setLoading(false);
-            return;
-          }
-
+          if (!rideSnap.exists()) { setRide(null); setLoading(false); return; }
           const rideData = { id: rideSnap.id, ...rideSnap.data() };
           setRide(rideData);
 
-          // ✅ Saare participants fetch karo
-          const allParticipants = rideData.participants || [];
           const users = await Promise.all(
-            allParticipants.map(async (uid) => {
+            (rideData.participants || []).map(async (uid) => {
               try {
                 const snap = await new Promise((resolve) => {
-                  const unsub = onSnapshot(doc(db, "profiles", uid), (s) => {
-                    unsub();
-                    resolve(s);
-                  });
+                  const unsub = onSnapshot(doc(db, "profiles", uid), (s) => { unsub(); resolve(s); });
                 });
                 return snap.exists() ? { uid, ...snap.data() } : null;
-              } catch {
-                return null;
-              }
+              } catch { return null; }
             })
           );
-
           setContacts(users.filter(Boolean));
           setLoading(false);
         });
@@ -86,81 +55,71 @@ function RideStatus() {
   const leaveRide = async () => {
     const user = auth.currentUser;
     if (!user || !ride || !rideId) return;
-
     try {
-      await updateDoc(doc(db, "rides", rideId), {
-        participants: arrayRemove(user.uid),
-        seats: Number(ride.seats) + 1
-      });
-
-      await updateDoc(doc(db, "profiles", user.uid), {
-        currentRideId: null
-      });
-
+      await updateDoc(doc(db, "rides", rideId), { participants: arrayRemove(user.uid), seats: Number(ride.seats) + 1 });
+      await updateDoc(doc(db, "profiles", user.uid), { currentRideId: null });
       window.location.reload();
-    } catch (err) {
-      console.error(err);
-      alert("Error leaving ride");
-    }
+    } catch (err) { alert("Error leaving ride"); }
   };
 
-  if (loading) return (
-    <p className="text-center mt-10 text-white">Loading...</p>
-  );
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>;
 
   if (!ride) return (
-    <p className="text-center mt-10 text-white">No active ride found</p>
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-gray-900 font-semibold text-lg mb-2">No active ride</p>
+        <p className="text-gray-500 text-sm">You are not part of any ride yet</p>
+      </div>
+    </div>
   );
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 px-2">
-      <div className="bg-slate-800 p-6 rounded-xl space-y-3">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-xl mx-auto px-6 py-12">
 
-        <h2 className="text-xl font-bold text-white">🚗 Your Ride</h2>
-        <p className="text-lg text-white">{ride.from} → {ride.to}</p>
-        <p className="text-gray-400">{ride.date} | {ride.time}</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Your Ride</h1>
+        <p className="text-gray-500 text-sm mb-8">View your active ride details and contact your cab partner</p>
 
-        <div className="mt-4 bg-slate-700 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-white">📞 Ride Members</h3>
-
-          {contacts.filter(u => u.uid !== currentUid).length === 0 && (
-            <p className="text-gray-400 text-sm">No other members yet</p>
-          )}
-
-          {contacts
-            .filter(u => u.uid !== currentUid)
-            .map((u, i) => {
-              const phone = u.phone || "";
-              const waNumber = phone.startsWith("91") ? phone : `91${phone}`;
-              const waMessage = encodeURIComponent(
-                `Hi ${u.name}! I'm your cab partner for the ride from ${ride.from} to ${ride.to} on ${ride.date} at ${ride.time}. Looking forward to sharing the cab! `
-              );
-
-              return (
-                <div key={i} className="bg-slate-600 p-4 rounded-lg mb-3">
-                  <p className="font-semibold text-white">👤 {u.name || "Unknown"}</p>
-                  <p className="text-gray-300 text-sm mt-1">📱 {phone || "Not provided"}</p>
-
-                  {phone && (
-                    <a
-                      href={`https://wa.me/${waNumber}?text=${waMessage}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 w-full bg-green-500 hover:bg-green-600 text-white text-center py-2 px-4 rounded-lg block font-medium"
-                    >
-                      💬 WhatsApp
-                    </a>
-                  )}
-                </div>
-              );
-            })}
+        {/* Ride info */}
+        <div className="border border-gray-200 rounded-2xl p-5 mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 capitalize mb-1">{ride.from} → {ride.to}</h2>
+          <p className="text-sm text-gray-500">{ride.date} · {ride.time}</p>
         </div>
 
-        <button
-          onClick={leaveRide}
-          className="w-full bg-yellow-500 hover:bg-yellow-600 p-3 rounded-lg font-semibold text-white"
-        >
-          Leave Ride 🚪
+        {/* Members */}
+        <div className="mb-4">
+          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Ride Members</h3>
+
+          {contacts.filter(u => u.uid !== currentUid).length === 0 && (
+            <div className="border border-gray-200 rounded-2xl p-5 text-center">
+              <p className="text-gray-400 text-sm">No other members yet</p>
+            </div>
+          )}
+
+          {contacts.filter(u => u.uid !== currentUid).map((u, i) => {
+            const phone = u.phone || "";
+            const waNumber = phone.startsWith("91") ? phone : `91${phone}`;
+            const waMessage = encodeURIComponent(
+              `Hi ${u.name}! I'm your cab partner for the ride from ${ride.from} to ${ride.to} on ${ride.date} at ${ride.time}. Looking forward to sharing the cab!`
+            );
+            return (
+              <div key={i} className="border border-gray-200 rounded-2xl p-5 mb-3">
+                <p className="font-semibold text-gray-900 mb-1">{u.name || "Unknown"}</p>
+                <p className="text-sm text-gray-500 mb-4">{phone || "No phone provided"}</p>
+                {phone && (
+                  <a href={`https://wa.me/${waNumber}?text=${waMessage}`} target="_blank" rel="noopener noreferrer"
+                    className="block w-full bg-green-500 hover:bg-green-600 text-white text-center py-2.5 rounded-xl text-sm font-medium transition">
+                    Message on WhatsApp
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button onClick={leaveRide}
+          className="w-full border-2 border-red-200 hover:border-red-400 text-red-500 hover:text-red-600 py-3 rounded-xl font-semibold text-sm transition">
+          Leave Ride
         </button>
 
       </div>
