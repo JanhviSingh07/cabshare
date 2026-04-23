@@ -16,7 +16,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
 
-  // ✅ Alag function — login pe bhi call hoga, save ke baad bhi
   const checkProfile = async (u) => {
     const snap = await getDoc(doc(db, "profiles", u.uid));
     if (
@@ -43,43 +42,55 @@ function App() {
   }, []);
 
   if (loading) {
-    return <p className="text-center mt-10">Loading...</p>;
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🚖</div>
+          <p className="text-gray-400 animate-pulse text-sm tracking-wide">
+            Loading CabShare...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-gray-100 px-4">
-
+    <div className="min-h-screen bg-white text-gray-900">
       <Toaster />
 
-      {/* HEADER */}
+      {/* NAVBAR */}
       {user && (
-        <div className="flex justify-between items-center mb-6">
-          <h2>🚖 CabShare</h2>
-          <button onClick={() => auth.signOut()}>Logout</button>
-        </div>
+        <nav className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🚖</span>
+            <span className="text-lg font-bold text-black tracking-tight">
+              CabShare
+            </span>
+          </div>
+          <button
+            onClick={() => auth.signOut()}
+            className="text-sm text-gray-600 hover:text-black border border-gray-300 hover:border-gray-800 px-4 py-1.5 rounded-full transition font-medium"
+          >
+            Logout
+          </button>
+        </nav>
       )}
 
       <Routes>
-
-        {/* NOT LOGGED IN */}
         {!user && (
           <Route path="*" element={<Auth />} />
         )}
 
-        {/* FORCE PROFILE — jab tak sab fields nahi bhari, yahan raho */}
         {user && !profileComplete && (
           <>
             <Route
               path="/profile"
-              element={
-                <Profile onProfileSaved={() => checkProfile(user)} />
-              }
+              element={<Profile onProfileSaved={() => checkProfile(user)} />}
             />
             <Route path="*" element={<Navigate to="/profile" />} />
           </>
         )}
 
-        {/* NORMAL FLOW — sab fields bhar di toh yahan aao */}
         {user && profileComplete && (
           <>
             <Route path="/" element={<Navigate to="/home" />} />
@@ -90,13 +101,10 @@ function App() {
             <Route path="/status" element={<RideStatus />} />
             <Route
               path="/profile"
-              element={
-                <Profile onProfileSaved={() => checkProfile(user)} />
-              }
+              element={<Profile onProfileSaved={() => checkProfile(user)} />}
             />
           </>
         )}
-
       </Routes>
     </div>
   );

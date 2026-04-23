@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 function Home() {
   const navigate = useNavigate();
 
-  // ✅ Clean data (no colors, no emojis overload)
   const cards = [
     {
       title: "Create Ride",
@@ -12,7 +11,7 @@ function Home() {
     },
     {
       title: "Find Ride",
-      desc: "Search for available rides",
+      desc: "Search for available rides near you",
       path: "/search-ride",
     },
     {
@@ -22,62 +21,51 @@ function Home() {
     },
     {
       title: "My Ride",
-      desc: "Check your ride and contacts",
+      desc: "View your active ride and contacts",
       path: "/status",
     }
   ];
 
   return (
-    <div className="min-h-screen max-w-5xl mx-auto px-4">
+    <div className="min-h-screen bg-white text-gray-900">
 
-      {/* HEADER */}
-      <h1 className="text-2xl font-semibold mt-6 mb-4 tracking-wide">
-        Dashboard
-      </h1>
+      {/* Hero */}
+      <div className="bg-black text-white px-6 py-14">
+        <h1 className="text-4xl font-extrabold leading-tight mb-3">
+          Easy sharing.
+        </h1>
+        <p className="text-gray-400 text-base">
+          Safe cab sharing for college students.
+        </p>
+      </div>
 
-      {/* MAIN CARDS */}
-      <div className="grid sm:grid-cols-2 gap-6">
-
+      {/* Cards */}
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
         {cards.map((item, i) => (
           <div
             key={i}
-            className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm hover:border-blue-500 hover:shadow-md transition"
+            onClick={() => navigate(item.path)}
+            className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-5 py-4 rounded-2xl cursor-pointer transition-all duration-150 active:scale-[0.99]"
           >
-            <h2 className="text-lg font-semibold mb-2">
-              {item.title}
-            </h2>
-
-            <p className="text-gray-400 mb-5 text-sm">
-              {item.desc}
-            </p>
-
-            <button
-              onClick={() => navigate(item.path)}
-              className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg text-sm font-medium transition"
-            >
-              Open
-            </button>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">{item.title}</h2>
+              <p className="text-sm text-gray-500">{item.desc}</p>
+            </div>
+            <span className="text-gray-400 text-xl">›</span>
           </div>
         ))}
 
-        {/* PROFILE CARD */}
-        <div className="sm:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm hover:border-blue-500 transition">
-          <h2 className="text-lg font-semibold mb-2">
-            Profile
-          </h2>
-
-          <p className="text-gray-400 mb-5 text-sm">
-            View and update your personal details
-          </p>
-
-          <button
-            onClick={() => navigate("/profile")}
-            className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg text-sm font-medium transition"
-          >
-            Open Profile
-          </button>
+        {/* Profile */}
+        <div
+          onClick={() => navigate("/profile")}
+          className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-5 py-4 rounded-2xl cursor-pointer transition-all duration-150 active:scale-[0.99]"
+        >
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Profile</h2>
+            <p className="text-sm text-gray-500">View and update your personal details</p>
+          </div>
+          <span className="text-gray-400 text-xl">›</span>
         </div>
-
       </div>
     </div>
   );

@@ -49,19 +49,19 @@ function Profile({ onProfileSaved }) {
     if (!user) return;
 
     if (!profile.name.trim()) {
-      return alert("Name enter karo");
+      return alert("Enter name");
     }
     if (profile.phone.length !== 10) {
-      return alert("Phone number exactly 10 digits hona chahiye");
+      return alert("Enter a Valid 10 digits phone number");
     }
     if (!profile.gender) {
-      return alert("Gender select karo");
+      return alert("Enter Gender");
     }
     if (!profile.college.trim()) {
-      return alert("College enter karo");
+      return alert("Enter college name");
     }
     if (!profile.regNo.trim()) {
-      return alert("Registration number enter karo");
+      return alert("Enter registration number");
     }
 
     setSaving(true);
